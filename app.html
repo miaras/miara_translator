@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miara Translator - Smart Aligned Translation</title>
+    <meta name="description" content="A minimalist translator that keeps your text perfectly aligned.">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+</head>
+
+<body>
+    <div class="mesh-bg"></div>
+    <div class="container">
+        <!-- Landing Page -->
+        <div id="landing-page" class="glass">
+            <header class="landing-header">
+                <h1>Miara Translator</h1>
+                <p>Clean, aligned translations powered by AI.</p>
+            </header>
+
+            <div class="input-area">
+                <div class="toolbar" style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+                    <input type="file" id="file-upload" accept=".docx" style="display: none;">
+                    <button id="upload-btn" class="secondary-btn" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                        <i data-lucide="upload"></i> Upload .docx
+                    </button>
+                </div>
+                <textarea id="source-text" placeholder="Type or paste your text here..."></textarea>
+                <div class="instructions-area" style="margin-top: 1rem; width: 100%;">
+                    <textarea id="custom-instructions"
+                        placeholder="Specific instructions for the AI (e.g., 'Use a formal tone', 'Focus on medical accuracy')..."></textarea>
+                </div>
+                <div class="controls">
+                    <div class="lang-selector">
+                        <span>Translate to: </span>
+                        <select id="target-lang">
+                            <option value="Korean">Korean</option>
+                            <option value="English">English</option>
+                            <option value="Japanese">Japanese</option>
+                            <option value="French">French</option>
+                            <option value="Spanish">Spanish</option>
+                            <option value="German">German</option>
+                            <option value="Chinese">Chinese</option>
+                        </select>
+                    </div>
+                    <div class="action-group" style="text-align: right;">
+                        <div id="price-estimate"
+                            style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">
+                            Estimated Price: $0.00
+                        </div>
+                        <button id="translate-btn" class="primary">Translate & Align</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="api-key-container" style="margin-top: 2rem; font-size: 0.8rem; color: var(--text-dim);">
+                <input type="password" id="api-key" placeholder="Enter Gemini API Key"
+                    style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 0.5rem; border-radius: 8px; color: white;">
+                <p style="margin-top: 0.5rem;">Your key is only stored locally in your browser.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loader" class="loader-overlay hidden">
+        <div class="spinner"></div>
+        <p style="margin-top: 1.5rem; font-weight: 500;">Your text is being translated.</p>
+        <p style="margin-top: 0.2rem; font-weight: 500;">Please do not close this page.</p>
+        <p style="margin-top: 0.2rem; font-weight: 500;">We will notify you when the translation is complete.</p>
+    </div>
+
+    <script type="module" src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

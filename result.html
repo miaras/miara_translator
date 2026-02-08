@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Results - Miara Translator</title>
+    <meta name="description" content="Aligned translation results.">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="mesh-bg"></div>
+    <div class="container">
+        <!-- Results Page -->
+        <div id="results-page" class="glass">
+            <header class="results-header">
+                <button class="back-btn" id="back-btn">← Back</button>
+                <div class="header-center">
+                    <h2>Aligned Translation</h2>
+                    <div id="processing-status"
+                        style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                        Initializing translation...
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button id="copy-btn" class="secondary-btn" title="Copy All">
+                        <i data-lucide="clipboard"></i> Copy
+                    </button>
+                    <button id="export-btn" class="secondary-btn" title="Export to Word">
+                        <i data-lucide="file-text"></i> Export
+                    </button>
+                </div>
+            </header>
+
+            <div id="alignment-grid" class="alignment-grid">
+                <!-- Rows will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State (For regeneration) -->
+    <div id="loader" class="loader-overlay hidden">
+        <div class="spinner"></div>
+        <p style="margin-top: 1.5rem; font-weight: 500;">Updating your translation...</p>
+    </div>
+
+    <script type="module" src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
