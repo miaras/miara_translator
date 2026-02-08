@@ -326,6 +326,35 @@ function removeSkeleton(id) {
     if (el) el.remove();
 }
 
+function showUpgradeModal() {
+    // Check if modal already exists
+    if (document.getElementById('upgrade-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'upgrade-modal';
+    modal.className = 'loader-overlay'; // Re-use loader overlay styles for backdrop
+    modal.style.background = 'rgba(0, 0, 0, 0.7)';
+
+    modal.innerHTML = `
+        <div class="glass" style="background: white; padding: 2.5rem; border-radius: 20px; text-align: center; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <i data-lucide="lock" style="width: 48px; height: 48px; color: var(--accent-primary); margin-bottom: 1rem;"></i>
+            <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Free Limit Reached</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">You've used your 5,000 free tokens! Upgrade to continue translating without limits.</p>
+            <a href="https://buy.stripe.com/test_placeholder" target="_blank" class="primary-btn-lg" style="display: inline-block; font-size: 1rem; padding: 0.8rem 2rem; text-decoration: none;">
+                Upgrade Now
+            </a>
+            <button id="close-modal-btn" style="margin-top: 1rem; background: none; border: none; color: var(--text-muted); cursor: pointer; display: block; width: 100%; font-size: 0.9rem;">Maybe Later</button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    lucide.createIcons();
+
+    document.getElementById('close-modal-btn').addEventListener('click', () => {
+        modal.remove();
+    });
+}
+
 function renderResults() {
     alignmentGrid.innerHTML = '';
 
