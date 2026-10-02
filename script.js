@@ -52,9 +52,9 @@ if (translateBtn) {
 
         if (!text) return alert("Please enter some text to translate.");
 
-        sessionStorage.setItem('MIARA_SOURCE_TEXT', text);
-        sessionStorage.setItem('MIARA_TARGET_LANG', targetLang);
-        sessionStorage.setItem('MIARA_INSTRUCTIONS', instructions);
+        sessionStorage.setItem('SHIROKO_SOURCE_TEXT', text);
+        sessionStorage.setItem('SHIROKO_TARGET_LANG', targetLang);
+        sessionStorage.setItem('SHIROKO_INSTRUCTIONS', instructions);
         window.location.href = 'result.html';
     };
 }
@@ -97,9 +97,9 @@ function handleFileUpload(event) {
 window.addEventListener('load', async () => {
     const path = window.location.pathname;
     if (path.includes('result.html')) {
-        const text = sessionStorage.getItem('MIARA_SOURCE_TEXT');
-        const targetLang = sessionStorage.getItem('MIARA_TARGET_LANG');
-        const instructions = sessionStorage.getItem('MIARA_INSTRUCTIONS');
+        const text = sessionStorage.getItem('SHIROKO_SOURCE_TEXT') ?? sessionStorage.getItem('MIARA_SOURCE_TEXT');
+        const targetLang = sessionStorage.getItem('SHIROKO_TARGET_LANG') ?? sessionStorage.getItem('MIARA_TARGET_LANG');
+        const instructions = sessionStorage.getItem('SHIROKO_INSTRUCTIONS') ?? sessionStorage.getItem('MIARA_INSTRUCTIONS');
 
         if (text && targetLang) {
             currentTargetLang = targetLang;
@@ -173,7 +173,7 @@ async function processAdvancedStreaming(fullText, targetLang, instructions) {
             // Render and save
             appendChunkToUI(result.alignedRows);
             currentData = currentData.concat(result.alignedRows);
-            sessionStorage.setItem('MIARA_TRANSLATION_DATA', JSON.stringify(currentData));
+            sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
         } catch (error) {
             console.error('Streaming Error:', error);
             removeSkeleton(skeletonId); // Ensure removal on error
@@ -210,7 +210,7 @@ function appendChunkToUI(rows) {
 
         targetCol.addEventListener('input', (e) => {
             currentData[globalIndex].target = e.target.textContent;
-            sessionStorage.setItem('MIARA_TRANSLATION_DATA', JSON.stringify(currentData));
+            sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
         });
 
         const actions = document.createElement('div');
@@ -383,7 +383,7 @@ function renderResults() {
         targetCol.addEventListener('input', (e) => {
             currentData[index].target = e.target.textContent;
             // Sync back to sessionStorage
-            sessionStorage.setItem('MIARA_TRANSLATION_DATA', JSON.stringify(currentData));
+            sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
         });
 
         const actions = document.createElement('div');
@@ -457,7 +457,7 @@ async function handleRegenerate(index, btn) {
 
         // Update data and UI
         currentData[index].target = newTranslation;
-        sessionStorage.setItem('MIARA_TRANSLATION_DATA', JSON.stringify(currentData));
+        sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
 
         const targetElement = btn.closest('.alignment-row').querySelector('.target-item');
         targetElement.textContent = newTranslation;
