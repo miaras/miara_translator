@@ -1,82 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Miara Translator - Smart Aligned Translation</title>
-    <meta name="description" content="A minimalist translator that keeps your text perfectly aligned.">
+    <meta name="theme-color" content="#f5f4f1">
+    <title>Editor — Miara Translator</title>
+    <meta name="description" content="Write, upload, and translate text with Miara.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 </head>
-
-<body>
-    <div class="mesh-bg"></div>
-    <div class="container">
-        <!-- Landing Page -->
-        <div id="landing-page" class="glass">
-            <header class="landing-header">
-                <h1>Miara Translator</h1>
-                <p>Clean, aligned translations powered by AI.</p>
+<body class="workspace-page">
+    <header class="site-header light-header">
+        <a class="wordmark" href="index.html" aria-label="Miara home">miara<span class="wordmark-dot">.</span></a>
+        <span class="header-caption">The translation studio</span>
+        <a class="header-link" href="index.html">About Miara <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+    </header>
+    <main class="workspace-main">
+        <div id="landing-page">
+            <header class="workspace-intro">
+                <div><p class="overline">A new translation</p><h1>Begin with <em>your words.</em></h1></div>
+                <p>Paste your text or upload a Word document. Miara will keep each sentence aligned with its translation.</p>
             </header>
-
-            <div class="input-area">
-                <div class="toolbar" style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
-                    <input type="file" id="file-upload" accept=".docx" style="display: none;">
-                    <button id="upload-btn" class="secondary-btn" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                        <i data-lucide="upload"></i> Upload .docx
-                    </button>
-                </div>
-                <textarea id="source-text" placeholder="Type or paste your text here..."></textarea>
-                <div class="instructions-area" style="margin-top: 1rem; width: 100%;">
-                    <textarea id="custom-instructions"
-                        placeholder="Specific instructions for the AI (e.g., 'Use a formal tone', 'Focus on medical accuracy')..."></textarea>
-                </div>
-                <div class="controls">
-                    <div class="lang-selector">
-                        <span>Translate to: </span>
-                        <select id="target-lang">
-                            <option value="Korean">Korean</option>
-                            <option value="English">English</option>
-                            <option value="Japanese">Japanese</option>
-                            <option value="French">French</option>
-                            <option value="Spanish">Spanish</option>
-                            <option value="German">German</option>
-                            <option value="Chinese">Chinese</option>
-                            <option value="Dutch">We heeben en serius probleem</option>
-                        </select>
-                    </div>
-                    <div class="action-group" style="text-align: right;">
-                        <div id="price-estimate"
-                            style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 500;">
-                            Estimated Price: $0.00
-                        </div>
-                        <button id="translate-btn" class="primary">Translate & Align</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="api-key-container" style="margin-top: 2rem; font-size: 0.8rem; color: var(--text-dim);">
-                <input type="password" id="api-key" placeholder="Enter Gemini API Key"
-                    style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 0.5rem; border-radius: 8px; color: white;">
-                <p style="margin-top: 0.5rem;">Your key is only stored locally in your browser.</p>
+            <div class="editor-layout">
+                <section class="editor-panel" aria-labelledby="source-heading">
+                    <div class="panel-heading"><div><span>01 / ORIGINAL</span><h2 id="source-heading">Your text</h2></div><div class="upload-wrap"><input type="file" id="file-upload" accept=".docx" hidden><button id="upload-btn" class="secondary-btn" type="button"><i data-lucide="upload" aria-hidden="true"></i> Upload .docx</button></div></div>
+                    <label class="visually-hidden" for="source-text">Text to translate</label>
+                    <textarea id="source-text" placeholder="Type or paste your text here..."></textarea>
+                    <div class="panel-footer"><span>Write freely. Longer passages keep their context.</span><span id="price-estimate">Estimated Price: $0.0000</span></div>
+                </section>
+                <aside class="settings-panel" aria-labelledby="settings-heading">
+                    <div class="panel-heading"><div><span>02 / PREFERENCES</span><h2 id="settings-heading">The details</h2></div></div>
+                    <label for="target-lang">Translate to</label>
+                    <select id="target-lang">
+                        <option value="Korean">Korean</option><option value="English">English</option><option value="Japanese">Japanese</option><option value="French">French</option><option value="Spanish">Spanish</option><option value="German">German</option><option value="Chinese">Chinese</option><option value="Dutch">Dutch</option>
+                    </select>
+                    <label for="custom-instructions">Style instructions <span>(optional)</span></label>
+                    <textarea id="custom-instructions" placeholder="E.g. use a formal tone, preserve technical terms..."></textarea>
+                    <div class="settings-spacer"></div>
+                    <button id="translate-btn" class="button button-dark" type="button">Translate &amp; align <i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+                    <p class="settings-note">You can review and edit every translated sentence.</p>
+                </aside>
             </div>
         </div>
-    </div>
-
-    <!-- Loading State -->
-    <div id="loader" class="loader-overlay hidden">
-        <div class="spinner"></div>
-        <p style="margin-top: 1.5rem; font-weight: 500;">Your text is being translated.</p>
-        <p style="margin-top: 0.2rem; font-weight: 500;">Please do not close this page.</p>
-        <p style="margin-top: 0.2rem; font-weight: 500;">We will notify you when the translation is complete.</p>
-    </div>
-
+    </main>
+    <div id="loader" class="loader-overlay hidden"><div class="spinner"></div><p>Your text is being translated.</p><p>Please keep this page open.</p></div>
     <script type="module" src="script.js"></script>
-    <script>
-        lucide.createIcons();
-    </script>
+    <script>if (window.lucide) lucide.createIcons();</script>
 </body>
-
 </html>

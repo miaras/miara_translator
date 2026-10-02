@@ -1,102 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Miara Translator - Professional Context-Aware AI Translation</title>
-    <meta name="description"
-        content="Translate documents with perfect context awareness, infinite scaling, and sentence-by-sentence alignment.">
+    <meta name="theme-color" content="#111111">
+    <title>Miara — Translation with context</title>
+    <meta name="description" content="Context-aware translation with sentence-by-sentence alignment, built for writing that deserves a closer reading.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+<body class="home-page">
+    <header class="site-header dark-header">
+        <a class="wordmark" href="index.html" aria-label="Miara home">miara<span class="wordmark-dot">.</span></a>
+        <nav aria-label="Main navigation">
+            <a href="#approach">The approach</a>
+            <a href="#pricing">Pricing</a>
+            <a class="nav-cta" href="app.html">Open translator <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+        </nav>
+    </header>
 
-<body>
-    <div class="mesh-bg"></div>
-    <div class="container">
-        <!-- Hero Section -->
-        <div id="landing-hero" class="glass" style="text-align: center; padding: 5rem 2rem; margin-bottom: 2rem;">
-            <header class="landing-header">
-                <h1 style="font-size: 3.5rem; margin-bottom: 1rem;">Miara Translator</h1>
-                <p
-                    style="font-size: 1.25rem; color: var(--text-secondary); margin-bottom: 2.5rem; max-width: 600px; margin-left: auto; margin-right: auto;">
-                    Translation perfectly aligned. <br>
-                    Context-aware AI that understands the full story, not just the sentence.
-                </p>
-                <a href="app.html" class="primary-btn-lg" style="text-decoration: none; display: inline-block;">
-                    Start Translating <i data-lucide="arrow-right"
-                        style="vertical-align: middle; margin-left: 5px;"></i>
-                </a>
-            </header>
-        </div>
-
-        <!-- Features Section -->
-        <section id="features">
-            <div class="feature-card">
-                <i data-lucide="brain-circuit"></i>
-                <h3>Context-Aware</h3>
-                <p>Miara remembers previous paragraphs to maintain tone and story consistency.</p>
+    <main>
+        <section class="hero">
+            <div class="hero-copy">
+                <p class="hero-index">For words that matter</p>
+                <h1>Every word<br>in its <em>right place.</em></h1>
+                <p class="hero-description">Context-aware translation that keeps the original and the translation together, sentence by sentence.</p>
+                <a href="app.html" class="button button-light">Start translating <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
             </div>
-            <div class="feature-card">
-                <i data-lucide="scaling"></i>
-                <h3>Infinite Docs</h3>
-                <p>Translate entire books, legal contracts, or papers without length limits.</p>
-            </div>
-            <div class="feature-card">
-                <i data-lucide="align-justify"></i>
-                <h3>Perfect Alignment</h3>
-                <p>Sentence-by-sentence alignment makes reviewing and editing effortless.</p>
-            </div>
-            <div class="feature-card">
-                <i data-lucide="file-type-2"></i>
-                <h3>Word Support</h3>
-                <p>Upload .docx files directly. We extract the text, you get the translation.</p>
-            </div>
-            <div class="feature-card">
-                <i data-lucide="pencil-ruler"></i>
-                <h3>Style Control</h3>
-                <p>Direct the AI: "Make it poetic", "Use legal jargon", or "Simple English".</p>
-            </div>
-            <div class="feature-card">
-                <i data-lucide="coins"></i>
-                <h3>Transparent Pricing</h3>
-                <p>Real-time cost estimation based on tokens so you never overspend.</p>
-            </div>
-        </section>
-
-        <!-- Pricing Section -->
-        <section id="pricing" style="margin-top: 3rem; text-align: center;">
-            <h2 style="margin-bottom: 2rem; font-size: 2rem;">Transparent Pricing</h2>
-            <div class="pricing-card glass"
-                style="padding: 2.5rem; max-width: 500px; margin: 0 auto; border: 1px solid var(--accent-primary);">
-                <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Pay as you go</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Powered by our proprietary AI engine</p>
-
-                <div style="display: flex; justify-content: space-around; text-align: left; margin-bottom: 2rem;">
-                    <div>
-                        <div
-                            style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">
-                            Output</div>
-                        <div style="font-size: 1.5rem; font-weight: 700;">$1.00 <span
-                                style="font-size: 0.9rem; font-weight: 400; color: var(--text-secondary);">/ 100K
-                                tokens</span></div>
-                    </div>
+            <div class="hero-aside" aria-label="Example of aligned translation">
+                <div class="aside-top"><span>01 / 02</span><span>Original → Translation</span></div>
+                <div class="translation-example">
+                    <p class="example-source">The meaning lives between the lines.</p>
+                    <div class="example-rule"></div>
+                    <p class="example-target" lang="ko">의미는 행간에 담겨 있습니다.</p>
                 </div>
-
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">~100K tokens is roughly <strong>250
-                        pages</strong> of text.</p>
+                <div class="aside-bottom"><span>Read in context.</span><i data-lucide="move-down-right" aria-hidden="true"></i></div>
             </div>
         </section>
 
-        <footer
-            style="margin-top: 4rem; text-align: center; color: var(--text-muted); padding-bottom: 2rem; font-size: 0.85rem;">
-            &copy; 2026 Miara Translator. All rights reserved.
-        </footer>
-    </div>
+        <section id="approach" class="approach section-wrap">
+            <div class="section-heading">
+                <h2>Translation is more<br>than substitution.</h2>
+                <p>Miara carries context through longer documents, then lays out each sentence beside its translation so you can read, review, and refine with confidence.</p>
+            </div>
+            <div class="feature-list">
+                <article><span class="feature-number">01</span><h3>Keep the context</h3><p>Previous paragraphs inform what comes next, helping tone and terminology stay consistent.</p><i data-lucide="arrow-up-right" aria-hidden="true"></i></article>
+                <article><span class="feature-number">02</span><h3>See both sides</h3><p>Sentence-by-sentence alignment makes it easier to compare the original with the translation.</p><i data-lucide="arrow-up-right" aria-hidden="true"></i></article>
+                <article><span class="feature-number">03</span><h3>Make it yours</h3><p>Add style instructions, edit the result, or bring in a Word document to begin.</p><i data-lucide="arrow-up-right" aria-hidden="true"></i></article>
+            </div>
+        </section>
 
-    <script>
-        lucide.createIcons();
-    </script>
+        <section class="statement">
+            <div class="section-wrap statement-inner">
+                <p>From the first sentence to the final line.</p>
+                <h2>Stay close to<br><em>the original.</em></h2>
+                <a href="app.html" class="text-link">Try the translator <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+            </div>
+        </section>
+
+        <section id="pricing" class="pricing section-wrap">
+            <div><h2>Clear from<br>the beginning.</h2><p>Estimate your translation cost as you write in the editor.</p></div>
+            <div class="pricing-detail"><p>Pay as you go</p><strong>$1.00 <span>/ 100K output tokens</span></strong><p>100K tokens is roughly 250 pages of text.</p><a href="app.html" class="text-link">Open the editor <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></div>
+        </section>
+    </main>
+
+    <footer class="site-footer"><a class="wordmark" href="index.html">miara<span class="wordmark-dot">.</span></a><span>Thoughtful translation, line by line.</span><span>© 2026 Miara Translator</span></footer>
+    <script>if (window.lucide) lucide.createIcons();</script>
 </body>
-
 </html>

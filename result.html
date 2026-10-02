@@ -1,55 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Translation Results - Miara Translator</title>
-    <meta name="description" content="Aligned translation results.">
+    <meta name="theme-color" content="#f5f4f1">
+    <title>Translation — Miara Translator</title>
+    <meta name="description" content="Review and refine your aligned translation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-
-<body>
-    <div class="mesh-bg"></div>
-    <div class="container">
-        <!-- Results Page -->
-        <div id="results-page" class="glass">
+<body class="workspace-page results-page-body">
+    <header class="site-header light-header">
+        <a class="wordmark" href="index.html" aria-label="Miara home">miara<span class="wordmark-dot">.</span></a>
+        <span class="header-caption">The translation studio</span>
+        <a class="header-link" href="index.html">About Miara <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+    </header>
+    <main class="workspace-main results-main">
+        <div id="results-page">
             <header class="results-header">
-                <button class="back-btn" id="back-btn">← Back</button>
-                <div class="header-center">
-                    <h2>Aligned Translation</h2>
-                    <div id="processing-status"
-                        style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
-                        Initializing translation...
-                    </div>
-                </div>
-                <div class="action-buttons">
-                    <button id="copy-btn" class="secondary-btn" title="Copy All">
-                        <i data-lucide="clipboard"></i> Copy
-                    </button>
-                    <button id="export-btn" class="secondary-btn" title="Export to Word">
-                        <i data-lucide="file-text"></i> Export
-                    </button>
-                </div>
+                <div class="results-title"><button class="back-btn" id="back-btn" type="button"><i data-lucide="arrow-left" aria-hidden="true"></i> Back to editor</button><h1>In <em>translation.</em></h1><p id="processing-status" role="status" aria-live="polite">Initializing translation...</p></div>
+                <div class="action-buttons"><button id="copy-btn" class="secondary-btn" type="button"><i data-lucide="clipboard" aria-hidden="true"></i> Copy</button><button id="export-btn" class="button button-dark" type="button"><i data-lucide="file-text" aria-hidden="true"></i> Export</button></div>
             </header>
-
-            <div id="alignment-grid" class="alignment-grid">
-                <!-- Rows will be injected here -->
-            </div>
+            <div class="column-headings"><span>Original</span><span>Translation <small>Click a sentence to edit</small></span></div>
+            <div id="alignment-grid" class="alignment-grid"></div>
         </div>
-    </div>
-
-    <!-- Loading State (For regeneration) -->
-    <div id="loader" class="loader-overlay hidden">
-        <div class="spinner"></div>
-        <p style="margin-top: 1.5rem; font-weight: 500;">Updating your translation...</p>
-    </div>
-
+    </main>
+    <div id="loader" class="loader-overlay hidden"><div class="spinner"></div><p>Updating your translation...</p></div>
     <script type="module" src="script.js"></script>
-    <script>
-        lucide.createIcons();
-    </script>
+    <script>if (window.lucide) lucide.createIcons();</script>
 </body>
-
 </html>
