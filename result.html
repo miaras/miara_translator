@@ -16,19 +16,21 @@
     <header class="site-header light-header">
         <a class="wordmark" href="index.html" aria-label="Shiroko home">shiroko<span class="wordmark-dot">.</span></a>
         <span class="header-caption">The translation studio</span>
-        <a class="header-link" href="index.html">About Shiroko <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+        <div class="account-controls"><span id="account-email" hidden></span><button id="auth-open" class="header-link" type="button">Sign in</button><button id="sign-out" class="header-link" type="button" hidden>Sign out</button></div>
     </header>
     <main class="workspace-main results-main">
         <div id="results-page">
             <header class="results-header">
                 <div class="results-title"><button class="back-btn" id="back-btn" type="button"><i data-lucide="arrow-left" aria-hidden="true"></i> Back to editor</button><h1>In <em>translation.</em></h1><p id="processing-status" role="status" aria-live="polite">Initializing translation...</p></div>
-                <div class="action-buttons"><button id="copy-btn" class="secondary-btn" type="button"><i data-lucide="clipboard" aria-hidden="true"></i> Copy</button><button id="export-btn" class="button button-dark" type="button"><i data-lucide="file-text" aria-hidden="true"></i> Export</button></div>
+                <div class="action-buttons"><button id="save-btn" class="secondary-btn" type="button"><i data-lucide="bookmark" aria-hidden="true"></i> Save</button><button id="copy-btn" class="secondary-btn" type="button"><i data-lucide="clipboard" aria-hidden="true"></i> Copy</button><button id="export-btn" class="button button-dark" type="button"><i data-lucide="file-text" aria-hidden="true"></i> Export</button></div>
             </header>
+            <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
             <div class="column-headings"><span>Original</span><span>Translation <small>Click a sentence to edit</small></span></div>
             <div id="alignment-grid" class="alignment-grid"></div>
         </div>
     </main>
     <div id="loader" class="loader-overlay hidden"><div class="spinner"></div><p>Updating your translation...</p></div>
+    <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><button id="auth-close" class="auth-close" type="button" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button><h2 id="auth-heading">Welcome back.</h2><p id="auth-intro">Sign in to keep your translations close.</p><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" required><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required minlength="12"><p id="auth-error" class="form-error" role="alert"></p><button id="auth-submit" class="button button-dark" type="submit">Sign in</button><button id="auth-switch" class="auth-switch" type="button">New here? Create an account</button></form></dialog>
     <script type="module" src="script.js"></script>
     <script>if (window.lucide) lucide.createIcons();</script>
 </body>

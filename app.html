@@ -17,7 +17,7 @@
     <header class="site-header light-header">
         <a class="wordmark" href="index.html" aria-label="Shiroko home">shiroko<span class="wordmark-dot">.</span></a>
         <span class="header-caption">The translation studio</span>
-        <a class="header-link" href="index.html">About Shiroko <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+        <div class="account-controls"><span id="account-email" hidden></span><button id="auth-open" class="header-link" type="button">Sign in</button><button id="sign-out" class="header-link" type="button" hidden>Sign out</button></div>
     </header>
     <main class="workspace-main">
         <div id="landing-page">
@@ -45,9 +45,15 @@
                     <p class="settings-note">You can review and edit every translated sentence.</p>
                 </aside>
             </div>
+            <section class="library" aria-labelledby="library-heading">
+                <div class="library-heading"><div><h2 id="library-heading">Saved translations</h2><p>Pick up an aligned translation where you left off.</p></div><button id="library-sign-in" class="secondary-btn" type="button">Sign in to see your work</button></div>
+                <p id="library-message" class="library-message">Sign in to see your saved translations.</p>
+                <div id="library-list" class="library-list"></div>
+            </section>
         </div>
     </main>
     <div id="loader" class="loader-overlay hidden"><div class="spinner"></div><p>Your text is being translated.</p><p>Please keep this page open.</p></div>
+    <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><button id="auth-close" class="auth-close" type="button" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button><h2 id="auth-heading">Welcome back.</h2><p id="auth-intro">Sign in to keep your translations close.</p><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" required><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required minlength="12"><p id="auth-error" class="form-error" role="alert"></p><button id="auth-submit" class="button button-dark" type="submit">Sign in</button><button id="auth-switch" class="auth-switch" type="button">New here? Create an account</button></form></dialog>
     <script type="module" src="script.js"></script>
     <script>if (window.lucide) lucide.createIcons();</script>
 </body>

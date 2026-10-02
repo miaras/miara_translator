@@ -3,6 +3,12 @@
 // Global State
 let currentData = [];
 let currentTargetLang = 'Korean';
+let currentSourceText = '';
+let currentInstructions = '';
+let currentSavedId = null;
+let currentUser = null;
+let authMode = 'login';
+let saveAfterLogin = false;
 
 // UI Elements
 const landingPage = document.getElementById('landing-page');
@@ -21,6 +27,121 @@ const exportBtn = document.getElementById('export-btn');
 const uploadBtn = document.getElementById('upload-btn');
 const fileInput = document.getElementById('file-upload');
 const priceDisplay = document.getElementById('price-estimate');
+const saveBtn = document.getElementById('save-btn');
+const saveStatus = document.getElementById('save-status');
+const authDialog = document.getElementById('auth-dialog');
+
+async function request(path, options = {}) {
+    const response = await fetch(path, { credentials: 'same-origin', ...options });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Request failed.');
+    return data;
+}
+function refreshAccount() {
+    const email = document.getElementById('account-email');
+    const open = document.getElementById('auth-open');
+    const signOut = document.getElementById('sign-out');
+    if (email) { email.textContent = currentUser?.email || ''; email.hidden = !currentUser; }
+    if (open) open.hidden = !!currentUser;
+    if (signOut) signOut.hidden = !currentUser;
+    const librarySignIn = document.getElementById('library-sign-in');
+    if (librarySignIn) librarySignIn.hidden = !!currentUser;
+}
+function openAuth() { authDialog?.showModal(); document.getElementById('auth-email')?.focus(); }
+function setAuthMode(mode) {
+    authMode = mode;
+    document.getElementById('auth-heading').textContent = mode === 'register' ? 'Make room for your words.' : 'Welcome back.';
+    document.getElementById('auth-intro').textContent = mode === 'register' ? 'Create an account to save your aligned translations.' : 'Sign in to keep your translations close.';
+    document.getElementById('auth-submit').textContent = mode === 'register' ? 'Create account' : 'Sign in';
+    document.getElementById('auth-switch').textContent = mode === 'register' ? 'Already have an account? Sign in' : 'New here? Create an account';
+    document.getElementById('auth-password').autocomplete = mode === 'register' ? 'new-password' : 'current-password';
+    document.getElementById('auth-error').textContent = '';
+}
+document.getElementById('auth-open')?.addEventListener('click', openAuth);
+document.getElementById('library-sign-in')?.addEventListener('click', openAuth);
+document.getElementById('auth-close')?.addEventListener('click', () => authDialog.close());
+authDialog?.addEventListener('close', () => { saveAfterLogin = false; });
+document.getElementById('auth-switch')?.addEventListener('click', () => setAuthMode(authMode === 'login' ? 'register' : 'login'));
+document.getElementById('auth-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const submit = document.getElementById('auth-submit');
+    const error = document.getElementById('auth-error');
+    submit.disabled = true;
+    error.textContent = '';
+    try {
+        const { user } = await request(`/api/${authMode}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('auth-email').value, password: document.getElementById('auth-password').value }) });
+        currentUser = user;
+        refreshAccount();
+        const shouldSave = saveAfterLogin;
+        authDialog.close();
+        document.getElementById('auth-form').reset();
+        if (shouldSave) await saveTranslation();
+        if (landingPage) await loadLibrary();
+        if (resultsPage && new URLSearchParams(location.search).has('id') && !currentData.length) location.reload();
+    } catch (e) { error.textContent = e.message; }
+    finally { submit.disabled = false; }
+});
+document.getElementById('sign-out')?.addEventListener('click', async () => {
+    try {
+        await request('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        currentUser = null;
+        currentSavedId = null;
+        ['SHIROKO_SAVED_ID', 'SHIROKO_SOURCE_TEXT', 'SHIROKO_TARGET_LANG', 'SHIROKO_INSTRUCTIONS', 'SHIROKO_TRANSLATION_DATA'].forEach(key => sessionStorage.removeItem(key));
+        refreshAccount();
+        if (landingPage) {
+            sourceText.value = '';
+            customInstructions.value = '';
+            updatePriceEstimate();
+            await loadLibrary();
+        }
+        if (resultsPage) location.href = 'app.html';
+    } catch (e) { if (saveStatus) saveStatus.textContent = e.message; }
+});
+async function loadLibrary() {
+    const list = document.getElementById('library-list');
+    const message = document.getElementById('library-message');
+    if (!list || !message) return;
+    list.replaceChildren();
+    if (!currentUser) { message.textContent = 'Sign in to see your saved translations.'; return; }
+    try {
+        const { translations } = await request('/api/translations');
+        message.textContent = translations.length ? '' : 'No saved translations yet. Translate something, then choose Save.';
+        translations.forEach(item => {
+            const link = document.createElement('a');
+            link.className = 'library-item';
+            link.href = `result.html?id=${encodeURIComponent(item.id)}`;
+            const title = document.createElement('strong');
+            title.textContent = item.title;
+            const detail = document.createElement('span');
+            detail.textContent = `${item.targetLang} · ${item.rowCount} sentences · Updated ${new Date(item.updatedAt).toLocaleDateString()}`;
+            link.append(title, detail);
+            list.appendChild(link);
+        });
+    } catch (e) { message.textContent = e.message; }
+}
+function markUnsaved() {
+    if (!saveStatus) return;
+    saveStatus.textContent = currentSavedId ? 'Unsaved changes' : '';
+    if (currentSavedId) saveBtn.textContent = 'Save changes';
+}
+async function saveTranslation() {
+    if (!currentUser) { saveAfterLogin = true; openAuth(); return; }
+    if (!currentData.length) { saveStatus.textContent = 'There is no translation to save yet.'; return; }
+    const title = currentSourceText.trim().split(/\n|[.!?。！？]/)[0].slice(0, 80).trim() || 'Untitled translation';
+    saveBtn.disabled = true;
+    saveStatus.textContent = 'Saving…';
+    try {
+        const { translation } = await request(currentSavedId ? `/api/translations/${currentSavedId}` : '/api/translations', { method: currentSavedId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, sourceText: currentSourceText, targetLang: currentTargetLang, instructions: currentInstructions, rows: currentData }) });
+        currentSavedId = translation.id;
+        sessionStorage.setItem('SHIROKO_SAVED_ID', currentSavedId);
+        history.replaceState(null, '', `result.html?id=${encodeURIComponent(currentSavedId)}`);
+        saveStatus.textContent = `Saved ${new Date(translation.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        saveBtn.innerHTML = '<i data-lucide="check" aria-hidden="true"></i> Saved';
+        window.lucide?.createIcons();
+    } catch (e) { saveStatus.textContent = e.message; }
+    finally { saveBtn.disabled = false; }
+}
+saveBtn?.addEventListener('click', saveTranslation);
 
 // Get API Key (Priority: Env -> localStorage -> Input)
 const envKey = import.meta.env ? import.meta.env.VITE_GEMINI_API_KEY : null;
@@ -55,6 +176,7 @@ if (translateBtn) {
         sessionStorage.setItem('SHIROKO_SOURCE_TEXT', text);
         sessionStorage.setItem('SHIROKO_TARGET_LANG', targetLang);
         sessionStorage.setItem('SHIROKO_INSTRUCTIONS', instructions);
+        sessionStorage.removeItem('SHIROKO_SAVED_ID');
         window.location.href = 'result.html';
     };
 }
@@ -95,14 +217,50 @@ function handleFileUpload(event) {
 
 // Page-specific Initialization
 window.addEventListener('load', async () => {
+    try { currentUser = (await request('/api/me')).user; } catch { currentUser = null; }
+    refreshAccount();
+    if (landingPage) {
+        sourceText.value = sessionStorage.getItem('SHIROKO_SOURCE_TEXT') || '';
+        targetLangSelect.value = sessionStorage.getItem('SHIROKO_TARGET_LANG') || 'Korean';
+        customInstructions.value = sessionStorage.getItem('SHIROKO_INSTRUCTIONS') || '';
+        updatePriceEstimate();
+        await loadLibrary();
+        if (new URLSearchParams(location.search).has('signin') && !currentUser) openAuth();
+    }
     const path = window.location.pathname;
     if (path.includes('result.html')) {
+        const savedId = new URLSearchParams(location.search).get('id');
+        if (savedId) {
+            try {
+                const { translation } = await request(`/api/translations/${encodeURIComponent(savedId)}`);
+                currentSavedId = translation.id;
+                currentSourceText = translation.sourceText;
+                currentTargetLang = translation.targetLang;
+                currentInstructions = translation.instructions;
+                currentData = translation.rows;
+                sessionStorage.setItem('SHIROKO_SOURCE_TEXT', currentSourceText);
+                sessionStorage.setItem('SHIROKO_TARGET_LANG', currentTargetLang);
+                sessionStorage.setItem('SHIROKO_INSTRUCTIONS', currentInstructions);
+                sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
+                renderResults();
+                document.getElementById('processing-status').textContent = `Saved translation · ${currentTargetLang}`;
+                saveStatus.textContent = 'All changes saved';
+                return;
+            } catch (e) {
+                document.getElementById('processing-status').textContent = e.message;
+                saveStatus.textContent = currentUser ? 'Choose another translation from your library.' : 'Sign in to open this saved translation.';
+                if (!currentUser) openAuth();
+                return;
+            }
+        }
         const text = sessionStorage.getItem('SHIROKO_SOURCE_TEXT') ?? sessionStorage.getItem('MIARA_SOURCE_TEXT');
         const targetLang = sessionStorage.getItem('SHIROKO_TARGET_LANG') ?? sessionStorage.getItem('MIARA_TARGET_LANG');
         const instructions = sessionStorage.getItem('SHIROKO_INSTRUCTIONS') ?? sessionStorage.getItem('MIARA_INSTRUCTIONS');
 
         if (text && targetLang) {
+            currentSourceText = text;
             currentTargetLang = targetLang;
+            currentInstructions = instructions || '';
             await processAdvancedStreaming(text, targetLang, instructions);
         } else {
             window.location.href = 'app.html';
@@ -174,6 +332,7 @@ async function processAdvancedStreaming(fullText, targetLang, instructions) {
             appendChunkToUI(result.alignedRows);
             currentData = currentData.concat(result.alignedRows);
             sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
+            markUnsaved();
         } catch (error) {
             console.error('Streaming Error:', error);
             removeSkeleton(skeletonId); // Ensure removal on error
@@ -211,6 +370,7 @@ function appendChunkToUI(rows) {
         targetCol.addEventListener('input', (e) => {
             currentData[globalIndex].target = e.target.textContent;
             sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
+            markUnsaved();
         });
 
         const actions = document.createElement('div');
@@ -384,6 +544,7 @@ function renderResults() {
             currentData[index].target = e.target.textContent;
             // Sync back to sessionStorage
             sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
+            markUnsaved();
         });
 
         const actions = document.createElement('div');
@@ -458,6 +619,7 @@ async function handleRegenerate(index, btn) {
         // Update data and UI
         currentData[index].target = newTranslation;
         sessionStorage.setItem('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
+        markUnsaved();
 
         const targetElement = btn.closest('.alignment-row').querySelector('.target-item');
         targetElement.textContent = newTranslation;
