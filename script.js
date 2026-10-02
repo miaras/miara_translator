@@ -195,24 +195,29 @@ if (uploadBtn && fileInput) {
     fileInput.addEventListener('change', handleFileUpload);
 }
 
-function handleFileUpload(event) {
+async function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const arrayBuffer = e.target.result;
-        mammoth.extractRawText({ arrayBuffer: arrayBuffer })
-            .then(result => {
-                sourceText.value = result.value;
-                updatePriceEstimate(); // Update price after upload
-            })
-            .catch(err => {
-                console.error("Error reading .docx file:", err);
-                alert("Failed to read document. Please ensure it's a valid .docx file.");
-            });
-    };
-    reader.readAsArrayBuffer(file);
+    const extension = file.name.split('.').pop().toLowerCase();
+    try {
+        if (!['pdf', 'docx'].includes(extension)) throw new Error('Choose a PDF or .docx file.');
+        const arrayBuffer = await file.arrayBuffer();
+        const text = extension === 'pdf'
+            ? await (await import('./pdf-upload.js')).extractPdfText(arrayBuffer)
+            : (await mammoth.extractRawText({ arrayBuffer })).value;
+        if (!text.trim()) throw new Error(extension === 'pdf'
+            ? 'This PDF has no selectable text. Scanned PDFs need OCR before uploading.'
+            : 'This Word document has no text to translate.');
+        sourceText.value = text;
+        updatePriceEstimate();
+    } catch (error) {
+        console.error('Error reading uploaded document:', error);
+        alert(error.message === 'Choose a PDF or .docx file.' || error.message.startsWith('This PDF has no selectable text.') || error.message === 'This Word document has no text to translate.'
+            ? error.message
+            : `Failed to read ${extension === 'pdf' ? 'PDF' : 'Word document'}. Please check that the file is valid.`);
+    } finally {
+        event.target.value = '';
+    }
 }
 
 // Page-specific Initialization
