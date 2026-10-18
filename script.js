@@ -155,8 +155,8 @@ function updatePriceEstimate() {
     // Estimate: output tokens are roughly equal to input tokens
     const outputTokens = inputTokens;
 
-    // GPT-5.6 Terra rates; context, summaries, and reasoning add to the actual cost.
-    const cost = ((inputTokens * 2) / 1000000) + ((outputTokens * 12) / 1000000);
+    // GPT-6.1 Sol rates; context, summaries, and reasoning add to the actual cost.
+    const cost = ((inputTokens * 2) / 1000000) + ((outputTokens * 10) / 1000000);
     priceDisplay.textContent = `Base estimate: $${cost.toFixed(4)}+`;
 }
 if (translateBtn) {

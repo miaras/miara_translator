@@ -1,4 +1,4 @@
-const MODEL = 'gpt-5.6-terra';
+const MODEL = 'gpt-6.1-sol';
 const URL = 'https://api.openai.com/v1/responses';
 
 const translationSchema = {

@@ -9,7 +9,7 @@ function response(text) {
     ] }) };
 }
 
-test('translation uses Terra structured output and keeps the API key on the server', async () => {
+test('translation uses GPT-6.1 Sol structured output and keeps the API key on the server', async () => {
     let sent;
     const fetchMock = async (url, options) => {
         sent = { url, options };
@@ -19,7 +19,7 @@ test('translation uses Terra structured output and keeps the API key on the serv
     assert.equal(sent.url, 'https://api.openai.com/v1/responses');
     assert.equal(sent.options.headers.Authorization, 'Bearer test-key');
     const body = JSON.parse(sent.options.body);
-    assert.equal(body.model, 'gpt-5.6-terra');
+    assert.equal(body.model, 'gpt-6.1-sol');
     assert.equal(body.store, false);
     assert.equal(body.text.format.type, 'json_schema');
     assert.equal(body.text.format.strict, true);

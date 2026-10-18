@@ -17,7 +17,7 @@ Set `OPENAI_API_KEY` in `.env` (or in the server environment) before starting th
 OPENAI_API_KEY=your_api_key
 ```
 
-Translation and sentence regeneration use `gpt-5.6-terra` through the server. The key is never included in the browser build. The editor's price display is a base estimate from source text length; prompt context, reasoning, and output length affect the actual API charge.
+Translation and sentence regeneration use `gpt-6.1-sol` through the server. The key is never included in the browser build. The editor's price display is a base estimate from source text length; prompt context, reasoning, and output length affect the actual API charge.
 
 Accounts and saved translations live in `data/store.json` by default; this directory is ignored by Git. Back it up to keep user work. Set `SHIROKO_DATA_FILE` to use another persistent file. Each saved translation includes the original text, target language, style instructions, paragraph boundaries, and editable aligned sentence pairs.
 
