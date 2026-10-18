@@ -5,9 +5,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual, createHash } from 'node:crypto';
 import { promisify } from 'node:util';
+import { translateWithOpenAI } from './openai-translation.js';
 
 const scrypt = promisify(scryptCallback);
 const root = path.dirname(fileURLToPath(import.meta.url));
+try { process.loadEnvFile(path.join(root, '.env')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const dataFile = process.env.SHIROKO_DATA_FILE || path.join(root, 'data', 'store.json');
 const port = Number(process.env.PORT || 3000);
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
@@ -52,6 +54,15 @@ function documentInput(value) {
     if (!value.rows.every(row => row && typeof row.source === 'string' && typeof row.target === 'string' && row.source.length <= 20_000 && row.target.length <= 20_000 && (row.newParagraph === undefined || typeof row.newParagraph === 'boolean'))) return null;
     return { title: value.title.trim(), sourceText: value.sourceText, targetLang: value.targetLang, instructions: value.instructions, rows: value.rows.map(({ source, target, newParagraph }) => ({ source, target, newParagraph: !!newParagraph })) };
 }
+function translationInput(value) {
+    if (!value || typeof value !== 'object' || !['translate', 'regenerate'].includes(value.mode)) return null;
+    const fields = ['text', 'targetLanguage', 'instructions', 'summary', 'previousContext', 'previousTranslatedText', 'contextBefore', 'contextAfter'];
+    if (fields.some(field => value[field] !== undefined && typeof value[field] !== 'string')) return null;
+    if (!value.text?.trim() || value.text.length > 10_000 || !value.targetLanguage?.trim() || value.targetLanguage.length > 80 || (value.instructions || '').length > 10_000) return null;
+    if (fields.slice(3).some(field => (value[field] || '').length > 10_000)) return null;
+    if (value.dictionary !== undefined && (!value.dictionary || typeof value.dictionary !== 'object' || Array.isArray(value.dictionary) || Object.entries(value.dictionary).length > 500 || Object.entries(value.dictionary).some(([key, term]) => key.length > 200 || typeof term !== 'string' || term.length > 200))) return null;
+    return value;
+}
 async function api(req, res, url) {
     if (!['GET', 'POST', 'PUT'].includes(req.method)) return json(res, 405, { error: 'Method not allowed.' });
     if (req.method !== 'GET') {
@@ -59,6 +70,16 @@ async function api(req, res, url) {
         const host = req.headers.host;
         if (origin && new URL(origin).host !== host) return json(res, 403, { error: 'Request origin rejected.' });
         if (!req.headers['content-type']?.startsWith('application/json')) return json(res, 415, { error: 'Expected JSON.' });
+    }
+    if (url.pathname === '/api/translate' && req.method === 'POST') {
+        const input = translationInput(await body(req));
+        if (!input) return json(res, 400, { error: 'Translation request is invalid.' });
+        if (!process.env.OPENAI_API_KEY) return json(res, 503, { error: 'OPENAI_API_KEY is not configured on the server.' });
+        try { return json(res, 200, await translateWithOpenAI(input)); }
+        catch (error) {
+            console.error('Translation failed:', error);
+            return json(res, 502, { error: error.message.startsWith('OpenAI is rate limited') ? error.message : 'Translation failed. Please try again.' });
+        }
     }
     if (url.pathname === '/api/me' && req.method === 'GET') {
         const user = userFor(req);

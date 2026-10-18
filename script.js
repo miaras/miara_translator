@@ -1,5 +1,3 @@
-// Gemini API calling function using fetch to avoid ESM module requirements for local files
-
 // Global State
 let currentData = [];
 let currentTargetLang = 'Korean';
@@ -143,10 +141,6 @@ async function saveTranslation() {
 }
 saveBtn?.addEventListener('click', saveTranslation);
 
-// Get API Key (Priority: Env -> localStorage -> Input)
-const envKey = import.meta.env ? import.meta.env.VITE_GEMINI_API_KEY : null;
-const storedKey = localStorage.getItem('GEMINI_API_KEY');
-
 // Event Listeners
 if (sourceText) {
     sourceText.addEventListener('input', updatePriceEstimate);
@@ -161,9 +155,9 @@ function updatePriceEstimate() {
     // Estimate: output tokens are roughly equal to input tokens
     const outputTokens = inputTokens;
 
-    // Price per million tokens: $0.5 input, $3 output
-    const cost = ((inputTokens * 0.5) / 1000000) + ((outputTokens * 3) / 1000000);
-    priceDisplay.textContent = `Estimated Price: $${cost.toFixed(4)}`;
+    // GPT-5.6 Terra rates; context, summaries, and reasoning add to the actual cost.
+    const cost = ((inputTokens * 2) / 1000000) + ((outputTokens * 12) / 1000000);
+    priceDisplay.textContent = `Base estimate: $${cost.toFixed(4)}+`;
 }
 if (translateBtn) {
     translateBtn.onclick = () => {
@@ -301,7 +295,6 @@ async function processAdvancedStreaming(fullText, targetLang, instructions) {
     let previousTranslatedText = ""; // Track previous output
     currentData = [];
 
-    console.log(chunks);
     for (let i = 0; i < chunks.length; i++) {
         if (statusEl) statusEl.textContent = `Translating chunk ${i + 1} of ${chunks.length}...`;
 
@@ -313,7 +306,6 @@ async function processAdvancedStreaming(fullText, targetLang, instructions) {
             const result = await translateAndAlignRecursive(
                 chunks[i],
                 targetLang,
-                envKey,
                 instructions,
                 summary,
                 dictionary,
@@ -326,7 +318,7 @@ async function processAdvancedStreaming(fullText, targetLang, instructions) {
 
             // Update state for next recursion
             summary = result.newSummary;
-            Object.assign(dictionary, result.newProperNouns || {});
+            dictionary = { ...dictionary, ...result.newProperNouns };
             previousText = chunks[i];
 
             // Store last ~1000 tokens (approx 4000 chars) of translation
@@ -341,8 +333,8 @@ async function processAdvancedStreaming(fullText, targetLang, instructions) {
         } catch (error) {
             console.error('Streaming Error:', error);
             removeSkeleton(skeletonId); // Ensure removal on error
-            if (statusEl) statusEl.textContent = "Error in translation.";
-            break;
+            if (statusEl) statusEl.textContent = `Translation stopped: ${error.message}`;
+            return;
         }
     }
 
@@ -394,77 +386,12 @@ function appendChunkToUI(rows) {
     if (window.lucide) window.lucide.createIcons();
 }
 
-async function translateAndAlignRecursive(text, targetLanguage, apiKey, instructions, summary, dictionary, previousContext, previousTranslatedText) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-
-    // Define Manual JSON Schema for Structured Output
-    const jsonSchema = {
-        type: "object",
-        properties: {
-            alignedRows: {
-                type: "array",
-                description: "List of aligned sentence pairs.",
-                items: {
-                    type: "object",
-                    properties: {
-                        source: { type: "string", description: "The original source sentence." },
-                        target: { type: "string", description: "The translated sentence." },
-                        newParagraph: { type: "boolean", description: "True if this sentence starts a new paragraph." }
-                    },
-                    required: ["source", "target"]
-                }
-            },
-            newSummary: { type: "string", description: "Updated summary of the text content including this chunk." },
-            newProperNouns: {
-                type: "object",
-                description: "Map of proper nouns to their translations.",
-                nullable: true
-            }
-        },
-        required: ["alignedRows", "newSummary"]
-    };
-
-    const prompt = `
-        Translate the following text into ${targetLanguage}.
-
-        CONTEXT:
-        1. PREVIOUS SUMMARY: "${summary}"
-        2. PREVIOUS SOURCE TEXT (last chunk): "${previousContext}"
-        3. PREVIOUS TRANSLATED TEXT (for style/flow consistency): "${previousTranslatedText}"
-        4. PROPER NOUN DICTIONARY: ${JSON.stringify(dictionary)}
-
-        ${instructions ? `USER INSTRUCTIONS: "${instructions}"\n` : ""}
-
-        TASK:
-        - Translate accurately and align by sentence.
-        - Use the dictionary to keep proper nouns/terms consistent.
-        - The dictionary is formatted as {source_term: translated_term}. Output the translated_term when seeing instances of source_term.
-        - Detect any NEW proper nouns or terms in this chunk.
-        - Update the summary to include this chunk's key events/info.
-        - Use the previous translated text's style, tense, and formality to ensure morphological consistency.
-        - When translatin Korean or Japanese, focus on the sentence endings to ensure consistency. For example, if the previous translated text has sentences ending with ~다, the output sentences should also end with ~다.
-
-        TEXT TO TRANSLATE:
-        "${text}"
-    `;
-
-    const body = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseJsonSchema: jsonSchema
-        }
-    };
-
-    const response = await fetch(url, {
+async function translateAndAlignRecursive(text, targetLanguage, instructions, summary, dictionary, previousContext, previousTranslatedText) {
+    return request('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ mode: 'translate', text, targetLanguage, instructions, summary, dictionary, previousContext, previousTranslatedText })
     });
-
-    if (!response.ok) throw new Error('Gemini API Error');
-    const result = await response.json();
-    return JSON.parse(result.candidates[0].content.parts[0].text);
 }
 
 function appendSkeleton(id) {
@@ -589,37 +516,11 @@ async function handleRegenerate(index, btn) {
         const contextAfter = currentData.slice(index + 1, end + 1).map(d => d.source).join('\n');
         const sentenceToTranslate = currentData[index].source;
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${envKey}`;
-
-        const prompt = `
-            Task: Re-translate the following sentence into ${currentTargetLang}.
-            
-            Context Before:
-            ${contextBefore}
-            
-            Target Sentence to Translate:
-            ${sentenceToTranslate}
-            
-            Context After:
-            ${contextAfter}
-            
-            IMPORTANT: Return ONLY the translated sentence, no extra text, no JSON. Just the translation.
-        `;
-
-        const body = {
-            contents: [{ parts: [{ text: prompt }] }]
-        };
-
-        const response = await fetch(url, {
+        const { translation: newTranslation } = await request('/api/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify({ mode: 'regenerate', text: sentenceToTranslate, targetLanguage: currentTargetLang, instructions: currentInstructions, contextBefore, contextAfter })
         });
-
-        if (!response.ok) throw new Error('Regeneration failed');
-
-        const result = await response.json();
-        const newTranslation = result.candidates[0].content.parts[0].text.trim();
 
         // Update data and UI
         currentData[index].target = newTranslation;
@@ -631,7 +532,7 @@ async function handleRegenerate(index, btn) {
 
     } catch (error) {
         console.error('Regenerate Error:', error);
-        alert('Failed to regenerate sentence.');
+        alert(`Failed to regenerate sentence: ${error.message}`);
     } finally {
         if (icon) icon.classList.remove('spinning');
     }
