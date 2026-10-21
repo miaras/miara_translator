@@ -1,0 +1,4 @@
+node_modules/
+exports/
+.render/
+assets/score.wav

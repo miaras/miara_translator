@@ -1,0 +1,56 @@
+{
+  "rows": [
+    [
+      "Call me Ishmael.",
+      "私をイシュメールと呼んでくれ。"
+    ],
+    [
+      "Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.",
+      "何年か前のことだ――正確にどれほど前かはどうでもいい――財布には金がほとんどなく、陸にはこれといって心を引かれるものもなかったので、少し船に乗って、世界の水に覆われた部分を見て回ろうと思い立った。"
+    ],
+    [
+      "It is a way I have of driving off the spleen and regulating the circulation.",
+      "これは、憂鬱を追い払い、血の巡りを整えるための私なりの方法なのだ。"
+    ],
+    [
+      "Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people’s hats off—then, I account it high time to get to sea as soon as I can.",
+      "口もとが険しくなってきたと感じるとき、心の中が湿っぽく霧雨の降る十一月になるとき、知らず知らず棺桶屋の前で足を止め、出会う葬列という葬列のしんがりについてしまうとき、そしてとりわけ、憂鬱にひどく支配され、わざと通りに出て、行き交う人の帽子を片っ端から叩き落とすのをこらえるのに強い道徳心が必要になるとき――そんなとき私は、一刻も早く海へ出る潮時だと考える。"
+    ],
+    [
+      "This is my substitute for pistol and ball.",
+      "これが私にとっての、拳銃と弾丸の代わりなのだ。"
+    ],
+    [
+      "With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship.",
+      "カトーは哲学者らしく大仰に己の剣へ身を投げるが、私は静かに船に乗る。"
+    ],
+    [
+      "There is nothing surprising in this.",
+      "何も驚くことはない。"
+    ],
+    [
+      "If they but knew it, almost all men in their degree, some time or other, cherish very nearly the same feelings towards the ocean with me.",
+      "もし自分の心に気づいてさえいれば、ほとんどすべての男は、それぞれの程度において、いつかは海に対して、私とほとんど同じ思いを抱くものなのだ。"
+    ]
+  ],
+  "books": [
+    {
+      "file": "20260821_173718.jpg",
+      "page": 52,
+      "ko": "화폐협주는 조선후기의 화폐정책 시행 상에 나타난 일종의 변칙적인 화폐주조 형태에 속하는 것이다. 따라서 화폐협주제의 실시는 국가의 화폐주조 사업에 민간인이 자본을 투입할 수 있는 계기가 되었으며, 민간인에 의한 화폐협주제의 실시는 중앙집권적 조선왕조가 지향하는 화폐주조 관리질서의 변질에 적지 않은 영향을 주었다.",
+      "en": "Private participation in coin minting was an irregular form of coinage that emerged in the implementation of monetary policy during the late Joseon period. The system created an opportunity for private individuals to invest capital in the state’s minting operations. Their participation significantly affected the minting administration envisaged by the centralized Joseon monarchy."
+    },
+    {
+      "file": "20260821_173722.jpg",
+      "page": 53,
+      "ko": "화폐주조 사업에 필요한 경비를 지출할 수 없게 되자, 민간인들에게 화폐주조를 허락하여 소정의 세금을 거두어들이려고 하였다. 이로 인해 왕조당국은 자본을 화폐주조 사업에 투입하지 않은 채, 비교적 고율의 세금을 징수하여 국가의 응급한 재정 수요에 충당할 수 있었다.",
+      "en": "When it became unable to cover the costs of minting, the government sought to permit private individuals to mint coins and collect a prescribed tax from them. In this way, the royal authorities could meet the state’s urgent financial needs by collecting relatively high taxes without investing capital in minting operations."
+    },
+    {
+      "file": "20260821_173724.jpg",
+      "page": 54,
+      "ko": "민간인에게 동전주조를 허락하자는 논의는 1623년(인조 1) 5월 이서(李曙)에 의해서 제기되었다.",
+      "en": "The proposal to allow private individuals to mint copper coins was put forward by Yi Seo in May 1623, the first year of King Injo’s reign."
+    }
+  ]
+}
