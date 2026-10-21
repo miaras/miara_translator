@@ -52,4 +52,10 @@ Optional environment variables: `PLAYWRIGHT_MODULE` (alternate module path), `FF
 
 Source photos are included under `assets/`. Generated previews, music, temporary frames, dependencies, and videos are ignored by Git. The existing website and launch film are unchanged.
 
-Inspection frames from the initial composition were reviewed in all three aspects. The portable renderer received syntax and source-content checks only; a full encode was deliberately not run after the user requested script-only delivery.
+## Verified local render
+
+On 2026-10-21, dependencies and Playwright Chromium were installed on macOS, all 21 inspection stills were generated and visually reviewed across the three aspects, and all three MP4s were rendered successfully. Frames extracted from each encoded MP4 were also visually inspected.
+
+`npm run verify` passed a complete video/audio decode for every format: 26 seconds, 780 frames, 30 fps, H.264 video and AAC audio, at the expected dimensions. It also confirmed the exact source passage and the selected photo order (173718 → 173722 → 173724); 173454 is excluded. Machine-readable results are in `exports/verification.json`, and overview sheets are in `exports/inspection-{16x9,1x1,9x16}.jpg`.
+
+The dependency lockfile is committed for reproducible installation. All generated media remains local and ignored by Git. No website files were modified and nothing was published.
