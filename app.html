@@ -4,17 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#10212b">
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg?v=ami-white-outline">
     <title>Editor — Shiroko Translator</title>
     <meta name="description" content="Write, upload, and translate text with Shiroko.">
+    <script src="/theme.js"></script>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 </head>
 <body class="workspace-page">
     <header class="site-header light-header">
-        <a class="wordmark" href="index.html" aria-label="Shiroko home">shiroko<span class="wordmark-dot">.</span></a>
+        <a class="wordmark" href="index.html" aria-label="Shiroko home"><span class="wordmark-symbol" aria-hidden="true"></span>shiroko<span class="wordmark-dot">.</span></a>
         <span class="header-caption">The translation studio</span>
-        <div class="account-controls"><span id="account-email" hidden></span><button id="auth-open" class="header-link" type="button">Sign in</button><button id="sign-out" class="header-link" type="button" hidden>Sign out</button></div>
+        <div class="account-controls"><span id="account-email" hidden></span><button id="auth-open" class="header-link" type="button">Sign in</button><button id="billing-open" class="header-link" type="button" hidden>Add credit</button><button id="invite-open" class="header-link" type="button" hidden>Invite friends</button><button id="auth-methods" class="header-link" type="button" hidden>Sign-in methods</button><button id="sign-out" class="header-link" type="button" hidden>Sign out</button></div>
     </header>
     <main class="workspace-main">
         <div id="landing-page">
@@ -22,21 +24,91 @@
                 <div><p class="overline">A new translation</p><h1>Begin with <em>your words.</em></h1></div>
                 <p>Paste your text or upload a PDF or Word document. Shiroko will keep each sentence aligned with its translation.</p>
             </header>
+            <div class="mode-actions"><button id="existing-mode-btn" class="secondary-btn" type="button" aria-expanded="false" aria-controls="existing-panel">Use Existing Translation</button></div>
             <div class="editor-layout">
                 <section class="editor-panel" aria-labelledby="source-heading">
                     <div class="panel-heading"><div><span>01 / ORIGINAL</span><h2 id="source-heading">Your text</h2></div><div class="upload-wrap"><input type="file" id="file-upload" accept=".pdf,.docx" hidden><button id="upload-btn" class="secondary-btn" type="button"><i data-lucide="upload" aria-hidden="true"></i> Upload PDF or .docx</button></div></div>
                     <label class="visually-hidden" for="source-text">Text to translate</label>
-                    <textarea id="source-text" placeholder="Type or paste your text here..."></textarea>
-                    <div class="panel-footer"><span>Write freely. Longer passages keep their context.</span><span id="price-estimate">Base estimate: $0.0000+</span></div>
+                    <textarea dir="auto" id="source-text" placeholder="Type or paste your original text"></textarea>
+                    <div id="existing-panel" hidden><div class="panel-heading"><div><span>02 / EXISTING TRANSLATION</span><label for="existing-translation">Existing Translation</label></div><div class="upload-wrap"><input type="file" id="existing-file-upload" accept=".pdf,.docx" hidden><button id="existing-upload-btn" class="secondary-btn" type="button" aria-label="Upload PDF or .docx for existing translation"><i data-lucide="upload" aria-hidden="true"></i> Upload PDF or .docx</button></div></div><textarea dir="auto" id="existing-translation" placeholder="Paste the translation you want to improve..."></textarea><p class="settings-note">Both texts should cover the same passage. Describe the changes you want in Style instructions.</p></div>
+                    <div class="panel-footer"><span>Write freely. Longer passages keep their context.</span><span id="price-estimate">$0.0000 · 0 source tokens</span></div>
                 </section>
                 <aside class="settings-panel" aria-labelledby="settings-heading">
-                    <div class="panel-heading"><div><span>02 / PREFERENCES</span><h2 id="settings-heading">The details</h2></div></div>
+                    <div class="panel-heading"><div><span id="preferences-step">02 / PREFERENCES</span><h2 id="settings-heading">The details</h2></div></div>
                     <label for="target-lang">Translate to</label>
                     <select id="target-lang">
-                        <option value="Korean">Korean</option><option value="English">English</option><option value="Japanese">Japanese</option><option value="French">French</option><option value="Spanish">Spanish</option><option value="German">German</option><option value="Chinese">Chinese</option><option value="Dutch">Dutch</option>
+                        <option value="Korean">Korean</option>
+                        <option value="English">English</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="French">French</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="German">German</option>
+                        <option value="Chinese">Chinese</option>
+                        <option value="Dutch">Dutch</option>
+                        <option value="Arabic">Arabic</option>
+                        <option value="Portuguese">Portuguese</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Russian">Russian</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Bengali">Bengali</option>
+                        <option value="Urdu">Urdu</option>
+                        <option value="Turkish">Turkish</option>
+                        <option value="Vietnamese">Vietnamese</option>
+                        <option value="Thai">Thai</option>
+                        <option value="Indonesian">Indonesian</option>
+                        <option value="Malay">Malay</option>
+                        <option value="Filipino">Filipino</option>
+                        <option value="Polish">Polish</option>
+                        <option value="Ukrainian">Ukrainian</option>
+                        <option value="Czech">Czech</option>
+                        <option value="Slovak">Slovak</option>
+                        <option value="Hungarian">Hungarian</option>
+                        <option value="Romanian">Romanian</option>
+                        <option value="Bulgarian">Bulgarian</option>
+                        <option value="Greek">Greek</option>
+                        <option value="Swedish">Swedish</option>
+                        <option value="Danish">Danish</option>
+                        <option value="Norwegian">Norwegian</option>
+                        <option value="Finnish">Finnish</option>
+                        <option value="Icelandic">Icelandic</option>
+                        <option value="Estonian">Estonian</option>
+                        <option value="Latvian">Latvian</option>
+                        <option value="Lithuanian">Lithuanian</option>
+                        <option value="Slovenian">Slovenian</option>
+                        <option value="Croatian">Croatian</option>
+                        <option value="Serbian">Serbian</option>
+                        <option value="Bosnian">Bosnian</option>
+                        <option value="Albanian">Albanian</option>
+                        <option value="Macedonian">Macedonian</option>
+                        <option value="Hebrew">Hebrew</option>
+                        <option value="Persian">Persian</option>
+                        <option value="Swahili">Swahili</option>
+                        <option value="Afrikaans">Afrikaans</option>
+                        <option value="Amharic">Amharic</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Telugu">Telugu</option>
+                        <option value="Marathi">Marathi</option>
+                        <option value="Gujarati">Gujarati</option>
+                        <option value="Punjabi">Punjabi</option>
+                        <option value="Nepali">Nepali</option>
+                        <option value="Sinhala">Sinhala</option>
+                        <option value="Khmer">Khmer</option>
+                        <option value="Lao">Lao</option>
+                        <option value="Burmese">Burmese</option>
                     </select>
+                    <details class="speed-settings">
+                        <summary>Settings <span id="selected-speed">Standard</span></summary>
+                        <fieldset class="speed-options"><legend>Translation speed</legend>
+                            <label class="speed-option"><input type="radio" name="translation-speed" value="standard" checked><span><strong>Standard</strong><small>1× monthly allowance usage</small></span></label>
+                            <label class="speed-option"><input type="radio" name="translation-speed" value="fast"><span><strong>Fast</strong><small>2× monthly allowance usage</small></span></label>
+                            <label class="speed-option"><input type="radio" name="translation-speed" value="ultrafast"><span><strong>Ultrafast</strong><small>6× monthly allowance usage</small></span></label>
+                        </fieldset>
+                        <p class="settings-note">Your choice applies to subsequent translation and regeneration requests.</p>
+                    </details>
+                    <p id="speed-price" class="settings-note" aria-live="polite"></p>
+                    <p class="settings-note">Fixed source-token pricing. Alignment, context, output, and reasoning are included.</p>
                     <label for="custom-instructions">Style instructions <span>(optional)</span></label>
-                    <textarea id="custom-instructions" placeholder="E.g. use a formal tone, preserve technical terms..."></textarea>
+                    <textarea dir="auto" id="custom-instructions" placeholder="E.g. use a formal tone, preserve technical terms..."></textarea>
                     <div class="settings-spacer"></div>
                     <button id="translate-btn" class="button button-dark" type="button">Translate &amp; align <i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
                     <p class="settings-note">You can review and edit every translated sentence.</p>
@@ -50,8 +122,26 @@
         </div>
     </main>
     <div id="loader" class="loader-overlay hidden"><div class="spinner"></div><p>Your text is being translated.</p><p>Please keep this page open.</p></div>
-    <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><button id="auth-close" class="auth-close" type="button" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button><h2 id="auth-heading">Welcome back.</h2><p id="auth-intro">Sign in to keep your translations close.</p><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" required><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required minlength="12"><p id="auth-error" class="form-error" role="alert"></p><button id="auth-submit" class="button button-dark" type="submit">Sign in</button><button id="auth-switch" class="auth-switch" type="button">New here? Create an account</button></form></dialog>
+    <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-heading">
+        <button id="auth-close" class="auth-close" type="button" aria-label="Close">Close</button>
+        <h2 id="auth-heading">Welcome back.</h2>
+        <p id="auth-intro">Sign in to keep your translations close.</p>
+        <div id="social-providers" class="social-providers" aria-label="Social sign-in options"></div>
+        <p id="social-status" class="social-status" role="status"></p>
+        <p id="auth-error" class="form-error" role="alert"></p>
+        <form id="auth-form">
+            <p class="auth-divider">or use your email</p>
+            <label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" required>
+            <label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required minlength="12">
+            <div id="auth-promotion-field" hidden><label for="auth-promotion">Promotion code (optional)</label><input id="auth-promotion" type="text" autocomplete="off" maxlength="100"></div>
+            <button id="auth-submit" class="button button-dark" type="submit">Sign in</button>
+            <button id="auth-switch" class="auth-switch" type="button">New here? Create an account</button>
+        </form>
+    </dialog>
     <script type="module" src="script.js"></script>
+    <script type="module" src="interface-i18n.js"></script>
+    <script type="module" src="human-review-ui.js"></script>
+    <script type="module" src="photo-upload.js"></script>
     <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

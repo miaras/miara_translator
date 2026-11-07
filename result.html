@@ -4,31 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#10212b">
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg?v=ami-white-outline">
     <title>Translation — Shiroko Translator</title>
     <meta name="description" content="Review and refine your aligned translation.">
+    <script src="/theme.js"></script>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="workspace-page results-page-body">
     <header class="site-header light-header">
-        <a class="wordmark" href="index.html" aria-label="Shiroko home">shiroko<span class="wordmark-dot">.</span></a>
+        <a class="wordmark" href="index.html" aria-label="Shiroko home"><span class="wordmark-symbol" aria-hidden="true"></span>shiroko<span class="wordmark-dot">.</span></a>
         <span class="header-caption">The translation studio</span>
-        <div class="account-controls"><span id="account-email" hidden></span><button id="auth-open" class="header-link" type="button">Sign in</button><button id="sign-out" class="header-link" type="button" hidden>Sign out</button></div>
+        <details class="result-account-menu"><summary>Account</summary><div class="account-controls"><span id="account-email" hidden></span><button id="auth-open" class="header-link" type="button">Sign in</button><button id="billing-open" class="header-link" type="button" hidden>Add credit</button><button id="invite-open" class="header-link" type="button" hidden>Invite friends</button><button id="auth-methods" class="header-link" type="button" hidden>Sign-in methods</button><button id="sign-out" class="header-link" type="button" hidden>Sign out</button></div></details>
     </header>
     <main class="workspace-main results-main">
         <div id="results-page">
             <header class="results-header">
-                <div class="results-title"><button class="back-btn" id="back-btn" type="button"><i data-lucide="arrow-left" aria-hidden="true"></i> Back to editor</button><h1>In <em>translation.</em></h1><p id="processing-status" role="status" aria-live="polite">Initializing translation...</p></div>
-                <div class="action-buttons"><button id="save-btn" class="secondary-btn" type="button"><i data-lucide="bookmark" aria-hidden="true"></i> Save</button><button id="copy-btn" class="secondary-btn" type="button"><i data-lucide="clipboard" aria-hidden="true"></i> Copy</button><button id="export-btn" class="button button-dark" type="button"><i data-lucide="file-text" aria-hidden="true"></i> Export</button></div>
+                <div class="result-document-heading"><button class="back-btn" id="back-btn" type="button"><i data-lucide="arrow-left" aria-hidden="true"></i> Editor</button><h1 class="visually-hidden">Translation editor</h1><div class="result-language-pair"><span id="result-source-language">Source</span><i data-lucide="arrow-right" aria-hidden="true"></i><strong id="result-target-language">Target</strong></div><span id="result-row-count">0 sentences</span></div>
+                <div class="action-buttons"><button id="save-btn" class="secondary-btn" type="button">Save</button><button id="copy-btn" class="secondary-btn" type="button">Copy</button><label class="visually-hidden" for="result-export-layout">Export content</label><select id="result-export-layout"><option value="translation">Translation only</option><option value="aligned">Side by side</option></select><label class="visually-hidden" for="result-export-format">Export format</label><select id="result-export-format"><option value="">Export…</option><option value="docx">Word (.docx)</option><option value="pdf">PDF / Print</option></select></div>
             </header>
-            <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
-            <div class="column-headings"><span>Original</span><span>Translation <small>Click a sentence to edit</small></span></div>
-            <div id="alignment-grid" class="alignment-grid"></div>
+            <div class="result-toolbar-group">
+                <div class="result-toolbar" aria-label="Translation tools"><label for="review-font-size">Text size <select id="review-font-size"><option value="12">12 px</option><option value="14">14 px</option><option value="16">16 px</option><option value="18">18 px</option><option value="20">20 px</option><option value="22">22 px</option><option value="24">24 px</option><option value="28">28 px</option><option value="32">32 px</option></select></label><button id="result-find-toggle" type="button" aria-expanded="false" aria-controls="result-find-panel">Find &amp; replace</button><button id="result-terms-toggle" type="button" aria-expanded="false" aria-controls="result-terms-panel">Terms <span id="result-term-count">0</span></button><span class="result-edit-hint">Click translated text to edit</span></div>
+                <section id="result-find-panel" class="result-find-panel" aria-label="Find and replace" hidden><div class="result-find-fields"><label for="result-find">Find in translation<input id="result-find" type="search" autocomplete="off" data-no-localize></label><label for="result-replacement">Replace with<input id="result-replacement" type="text" autocomplete="off" data-no-localize></label><label class="result-case-option"><input id="result-match-case" type="checkbox">Match case</label></div><div class="result-find-actions"><button id="result-find-prev" type="button" disabled>Previous</button><button id="result-find-next" type="button" disabled>Next</button><button id="result-replace-one" type="button" disabled>Replace</button><button id="result-replace-all" type="button" disabled>Replace all</button><button id="result-replace-undo" type="button" disabled>Undo replacement</button><output id="result-match-count" aria-live="polite">Find in all translated sentences</output></div><p id="result-replace-status" class="result-tool-status" role="status"></p></section>
+            </div>
+            <div class="result-settings">
+                    <details class="speed-settings">
+                        <summary>Settings <span id="selected-speed">Standard</span></summary>
+                        <fieldset class="speed-options"><legend>Translation speed</legend>
+                            <label class="speed-option"><input type="radio" name="translation-speed" value="standard" checked><span><strong>Standard</strong><small>1× monthly allowance usage</small></span></label>
+                            <label class="speed-option"><input type="radio" name="translation-speed" value="fast"><span><strong>Fast</strong><small>2× monthly allowance usage</small></span></label>
+                            <label class="speed-option"><input type="radio" name="translation-speed" value="ultrafast"><span><strong>Ultrafast</strong><small>6× monthly allowance usage</small></span></label>
+                        </fieldset>
+                        <p class="settings-note">Your choice applies to subsequent translation and regeneration requests.</p>
+                    </details>
+                    <p id="speed-price" class="settings-note" aria-live="polite"></p>
+            </div>
+            <div class="result-status-line"><p id="processing-status" role="status" aria-live="polite">Initializing translation...</p><p id="save-status" class="save-status" role="status" aria-live="polite"></p><p id="result-export-status" role="status" aria-live="polite"></p></div>
+            <div class="result-workspace"><section class="result-sentences" aria-label="Aligned sentences"><div class="column-headings"><span id="result-column-source">Source</span><span id="result-column-target">Translation</span></div><div id="alignment-grid" class="alignment-grid" data-no-localize></div></section><aside id="result-terms-panel" class="result-terms-panel" aria-labelledby="result-terms-heading" hidden><div class="result-terms-heading"><h2 id="result-terms-heading">Terminology</h2><button id="result-terms-close" type="button" aria-label="Close terminology panel">Close</button></div><p>Proper nouns and specialist terms extracted by the model.</p><label class="visually-hidden" for="result-terms-filter">Filter terms</label><input id="result-terms-filter" type="search" placeholder="Filter terms"><dl id="result-terms-list" data-no-localize></dl><p id="result-terms-empty">No terms extracted yet.</p></aside></div>
         </div>
     </main>
     <div id="loader" class="loader-overlay hidden"><div class="spinner"></div><p>Updating your translation...</p></div>
-    <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-heading"><form id="auth-form"><button id="auth-close" class="auth-close" type="button" aria-label="Close"><i data-lucide="x" aria-hidden="true"></i></button><h2 id="auth-heading">Welcome back.</h2><p id="auth-intro">Sign in to keep your translations close.</p><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" required><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required minlength="12"><p id="auth-error" class="form-error" role="alert"></p><button id="auth-submit" class="button button-dark" type="submit">Sign in</button><button id="auth-switch" class="auth-switch" type="button">New here? Create an account</button></form></dialog>
+    <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-heading">
+        <button id="auth-close" class="auth-close" type="button" aria-label="Close">Close</button>
+        <h2 id="auth-heading">Welcome back.</h2>
+        <p id="auth-intro">Sign in to keep your translations close.</p>
+        <div id="social-providers" class="social-providers" aria-label="Social sign-in options"></div>
+        <p id="social-status" class="social-status" role="status"></p>
+        <p id="auth-error" class="form-error" role="alert"></p>
+        <form id="auth-form">
+            <p class="auth-divider">or use your email</p>
+            <label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" required>
+            <label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" required minlength="12">
+            <div id="auth-promotion-field" hidden><label for="auth-promotion">Promotion code (optional)</label><input id="auth-promotion" type="text" autocomplete="off" maxlength="100"></div>
+            <button id="auth-submit" class="button button-dark" type="submit">Sign in</button>
+            <button id="auth-switch" class="auth-switch" type="button">New here? Create an account</button>
+        </form>
+    </dialog>
     <script type="module" src="script.js"></script>
+    <script type="module" src="interface-i18n.js"></script>
+    <script type="module" src="human-review-ui.js"></script>
     <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

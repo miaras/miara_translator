@@ -1,0 +1,110 @@
+{
+  "model": "gpt-6.1-sol",
+  "source": "Synthetic public-services essay",
+  "records": [
+    {
+      "sourceLanguage": "English",
+      "targetLanguage": "Spanish",
+      "sourceTokens": 426,
+      "inputTokens": 638,
+      "outputTokens": 1621,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 27528,
+      "uncachedCostUsd": 0.017486,
+      "costPer50kSourceTokens": 2.0523474178403758,
+      "marginOn9DollarPlan": 0.6664058424621806
+    },
+    {
+      "sourceLanguage": "Spanish",
+      "targetLanguage": "English",
+      "sourceTokens": 571,
+      "inputTokens": 773,
+      "outputTokens": 1610,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 24576,
+      "uncachedCostUsd": 0.017646,
+      "costPer50kSourceTokens": 1.545183887915937,
+      "marginOn9DollarPlan": 0.7227573457871181
+    },
+    {
+      "sourceLanguage": "English",
+      "targetLanguage": "French",
+      "sourceTokens": 426,
+      "inputTokens": 638,
+      "outputTokens": 1404,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 23724,
+      "uncachedCostUsd": 0.015316,
+      "costPer50kSourceTokens": 1.7976525821596245,
+      "marginOn9DollarPlan": 0.6947052686489307
+    },
+    {
+      "sourceLanguage": "French",
+      "targetLanguage": "English",
+      "sourceTokens": 612,
+      "inputTokens": 814,
+      "outputTokens": 1663,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 26586,
+      "uncachedCostUsd": 0.018258,
+      "costPer50kSourceTokens": 1.4916666666666667,
+      "marginOn9DollarPlan": 0.7287037037037037
+    },
+    {
+      "sourceLanguage": "English",
+      "targetLanguage": "Chinese",
+      "sourceTokens": 426,
+      "inputTokens": 638,
+      "outputTokens": 1625,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 28284,
+      "uncachedCostUsd": 0.017526,
+      "costPer50kSourceTokens": 2.057042253521127,
+      "marginOn9DollarPlan": 0.6658841940532082
+    },
+    {
+      "sourceLanguage": "Chinese",
+      "targetLanguage": "English",
+      "sourceTokens": 568,
+      "inputTokens": 770,
+      "outputTokens": 1603,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 25080,
+      "uncachedCostUsd": 0.01757,
+      "costPer50kSourceTokens": 1.5466549295774648,
+      "marginOn9DollarPlan": 0.7225938967136151
+    },
+    {
+      "sourceLanguage": "English",
+      "targetLanguage": "Arabic",
+      "sourceTokens": 426,
+      "inputTokens": 638,
+      "outputTokens": 1696,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 29052,
+      "uncachedCostUsd": 0.018236,
+      "costPer50kSourceTokens": 2.14037558685446,
+      "marginOn9DollarPlan": 0.656624934793949
+    },
+    {
+      "sourceLanguage": "Arabic",
+      "targetLanguage": "English",
+      "sourceTokens": 622,
+      "inputTokens": 824,
+      "outputTokens": 1666,
+      "cachedInputTokens": 0,
+      "reasoningTokens": 0,
+      "milliseconds": 26773,
+      "uncachedCostUsd": 0.018308,
+      "costPer50kSourceTokens": 1.4717041800643087,
+      "marginOn9DollarPlan": 0.7309217577706324
+    }
+  ]
+}

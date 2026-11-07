@@ -1,0 +1,37 @@
+{
+  "film": "Shiroko side-by-side launch",
+  "source": "Filmed Moby-Dick English-to-French translation",
+  "results": [
+    {
+      "aspect": "16x9",
+      "file": "public/demo/side-by-side-launch.mp4",
+      "dimensions": "1920x1080",
+      "durationSeconds": 26,
+      "frames": 780,
+      "video": "H.264",
+      "audio": "AAC",
+      "bytes": 2157524
+    },
+    {
+      "aspect": "1x1",
+      "file": "video/launch/exports/launch-1x1.mp4",
+      "dimensions": "1080x1080",
+      "durationSeconds": 26,
+      "frames": 780,
+      "video": "H.264",
+      "audio": "AAC",
+      "bytes": 1932774
+    },
+    {
+      "aspect": "9x16",
+      "file": "video/launch/exports/launch-9x16.mp4",
+      "dimensions": "1080x1920",
+      "durationSeconds": 26,
+      "frames": 780,
+      "video": "H.264",
+      "audio": "AAC",
+      "bytes": 1792632
+    }
+  ],
+  "distinctMotionSamples": 42
+}

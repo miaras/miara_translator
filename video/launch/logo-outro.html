@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#10212b;overflow:hidden}canvas{display:block}</style></head><body><canvas></canvas><script>
+// Deterministic, frame-driven vector morph; no recording timers or external assets.
+const size=new URLSearchParams(location.search).get('size').split('x').map(Number);
+const [W,H]=size,canvas=document.querySelector('canvas');const renderScale=2/3;canvas.width=Math.round(W*renderScale);canvas.height=Math.round(H*renderScale);
+const ctx=canvas.getContext('2d');
+const shapePaths={
+ A:['M7 27L16 5','M16 5L25 27','M11 18H21'],
+ mi:['M8 6H21C19.4 12.2 16.3 20.1 12.1 24C9.1 26.8 5.8 24.8 6.8 21.7C8.9 15.1 20.1 16.6 28 23.6','M25.1 12.6C25.1 19.2 23.8 25.1 19.3 28','M16 18L16.01 18'],
+ merged:['M12.6 6.2H21C19.4 12.2 16.3 20.1 12.1 24C9.1 26.8 5.8 24.8 6.8 21.7C8.9 15.1 20.1 16.6 28 23.6','M25.1 12.6C25.1 19.2 23.8 25.1 19.3 28','M4 27 12 5.5Q12.5 4.6 13.2 5.6L16.8 14']
+};
+const ns='http://www.w3.org/2000/svg';
+const shapes=Object.fromEntries(Object.entries(shapePaths).map(([name,paths])=>[name,paths.map(d=>{
+ const p=document.createElementNS(ns,'path');p.setAttribute('d',d);const length=p.getTotalLength();
+ return Array.from({length:160},(_,i)=>{const point=p.getPointAtLength(length*i/159);return [point.x,point.y]});
+})]));
+const clamp=t=>Math.max(0,Math.min(1,t));const ease=t=>{t=clamp(t);return t*t*t*(t*(t*6-15)+10)};
+window.drawFrame=t=>{
+ ctx.setTransform(renderScale,0,0,renderScale,0,0);
+ ctx.fillStyle='#10212b';ctx.fillRect(0,0,W,H);
+ const glow=ctx.createRadialGradient(W*.6,H*.42,10,W*.6,H*.42,W*.8);glow.addColorStop(0,'#25414f66');glow.addColorStop(1,'#10212b00');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+ const p=ease((t-.55)/1.4),q=ease((t-2.45)/1.05);
+ const scale=Math.min(W,H)*.0115;
+ ctx.save();ctx.translate(W/2-16*scale,H*.4-16*scale);ctx.scale(scale,scale);
+ ctx.strokeStyle='#edf2f4';ctx.lineWidth=2.7;ctx.lineCap='round';ctx.lineJoin='round';
+ for(let path=0;path<3;path++){
+  ctx.globalAlpha=path===2?1-p+q:1;ctx.beginPath();
+  for(let i=0;i<160;i++){
+   const a=shapes.A[path][i],m=shapes.mi[path][i],b=shapes.merged[path][i];
+   const x=(a[0]+(m[0]-a[0])*p)*(1-q)+b[0]*q;
+   const y=(a[1]+(m[1]-a[1])*p)*(1-q)+b[1]*q;
+   if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }ctx.stroke();
+ }ctx.restore();
+ const reveal=ease((t-3.3)/.3),font=Math.min(W,H);
+ ctx.globalAlpha=reveal;ctx.textAlign='center';ctx.fillStyle='#edf2f4';ctx.font=`700 ${font*.074}px Arial`;ctx.fillText('shiroko.',W/2,H*.64);
+ ctx.fillStyle='#b6cbd7';ctx.font=`400 ${font*.029}px Arial`;ctx.fillText('Every sentence. Side by side.',W/2,H*.715);
+ ctx.fillStyle='#8fbad0';ctx.font=`400 ${font*.025}px Arial`;ctx.fillText('translate.shiroko.tools',W/2,H*.79);ctx.globalAlpha=1;
+};window.drawFrame(0);
+</script></body></html>

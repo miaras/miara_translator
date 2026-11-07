@@ -1,0 +1,39 @@
+# Shiroko Translator
+
+Website: https://translate.shiroko.tools/
+Translator: https://translate.shiroko.tools/app.html
+Book photos: https://translate.shiroko.tools/book.html
+Plans: https://translate.shiroko.tools/#pricing
+Comparison: https://translate.shiroko.tools/#comparison
+Contact: support@shiroko.tools
+Updated: 2026-11-01
+
+## Product
+Shiroko is a translation workspace for reading, comparing, and revising longer texts. It supports 58 target languages. The original and translation are displayed as editable aligned sentence pairs.
+
+## Features
+- Paste text or import selectable text from PDF and DOCX files.
+- Translate with style instructions and context carried across document chunks.
+- Automatically extract proper nouns and specialist terminology during translation.
+- Add preferred source-term / target-term pairs before translation or in the results terminology panel. Custom terms take priority over automatically extracted terms for upcoming chunks and sentence regeneration. Existing translated sentences are not changed automatically.
+- Improve an existing translation alongside its original text.
+- Edit and regenerate individual translated sentences.
+- Save translations to an account and export reviewed results.
+- With an active paid subscription, import book-page photos, arrange their order, transcribe them, review and edit their text, and send combined book text to the translation editor.
+- Photo transcription and translation consume allowance separately.
+
+## Monthly plans
+Personal: USD 9/month; 50,000 Standard-equivalent allowance tokens.
+Plus: USD 19/month; 120,000 Standard-equivalent allowance tokens.
+Pro: USD 99/month; 650,000 Standard-equivalent allowance tokens.
+All three plans support 58 target languages and include access to photo transcription.
+Standard uses 1x allowance; Fast 2x; Ultrafast 6x. Improvement and sentence regeneration also consume allowance. Monthly allowance resets each paid billing period without rollover. Optional non-expiring prepaid top-ups are available. Consult the pricing page and checkout for current terms.
+
+## Human Review
+A separate manual review service is available for English and Korean. Request a quote through the website; it is billed separately from translation allowance.
+
+## Important distinctions
+Shiroko imports document text into its review workspace; it does not promise preservation of the source document's page layout. AI translations and photo transcriptions should be reviewed for accuracy. The website comparison describes workflows, not benchmarked translation quality.
+
+## Privacy-related product behavior
+Book photos are stored in the importing browser and sent for processing when transcription starts. Recognized text and job results may be cached on the server. Saved translations are associated with the user's account. This file is public product information, not an authorization to access private account data or perform account actions.

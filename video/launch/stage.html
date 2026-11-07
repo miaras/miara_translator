@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Shiroko launch film</title><style>html,body{margin:0;background:#10212b;overflow:hidden}canvas{display:block}video{display:none}</style></head><body><canvas id="film"></canvas><video id="footage" src="/montage.mp4" muted playsinline preload="auto"></video><script>
+const aspect=new URLSearchParams(location.search).get('aspect')||'16x9';
+const sizes={'16x9':[1920,1080],'1x1':[1080,1080],'9x16':[1080,1920]};
+const [W,H]=sizes[aspect], portrait=H>W,square=W===H;
+const canvas=document.getElementById('film');const renderScale=2/3;canvas.width=Math.round(W*renderScale);canvas.height=Math.round(H*renderScale);canvas.style.width='100vw';canvas.style.height='100vh';
+const ctx=canvas.getContext('2d',{alpha:false});
+const video=document.getElementById('footage');
+const palette={bg:'#10212b',ink:'#edf2f4',soft:'#b6cbd7',accent:'#8fbad0',panel:'#25414f'};
+const ease=t=>1-Math.pow(1-Math.max(0,Math.min(1,t)),3);
+function type(text,x,y,size=40,{color=palette.ink,align='left',weight=400}={}){ctx.fillStyle=color;ctx.font=`${weight} ${size}px Arial, sans-serif`;ctx.textAlign=align;ctx.fillText(text,x,y);}
+function fit(text,maxWidth,size){ctx.font=`500 ${size}px Arial`;return Math.min(size,size*maxWidth/ctx.measureText(text).width);}
+function lines(text,x,y,maxWidth,size,lineHeight,align='left',color=palette.ink){
+ ctx.font=`500 ${size}px Arial`;const words=text.split(' ');let line='',n=0;
+ for(const word of words){const candidate=line?`${line} ${word}`:word;if(ctx.measureText(candidate).width>maxWidth&&line){type(line,x,y+n*lineHeight,size,{align,color,weight:500});line=word;n++;}else line=candidate;}
+ if(line)type(line,x,y+n*lineHeight,size,{align,color,weight:500});return n+1;
+}
+function background(){ctx.fillStyle=palette.bg;ctx.fillRect(0,0,W,H);const glow=ctx.createRadialGradient(W*.6,H*.42,10,W*.6,H*.42,W*.8);glow.addColorStop(0,'#25414f66');glow.addColorStop(1,'#10212b00');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);}
+function wordmark(x,y,size,scale=1,align='center'){ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);type('shiroko.',0,0,size,{align,weight:700});ctx.restore();}
+function draw(t){
+ ctx.setTransform(renderScale,0,0,renderScale,0,0);background();
+ if(t<2){
+  const a=ease(t/.45);ctx.save();ctx.globalAlpha=a;ctx.translate(0,24*(1-a));
+  type('EVERY SENTENCE HAS TWO SIDES.',W/2,portrait?460:270,portrait?24:18,{align:'center',color:palette.accent,weight:600});
+  lines('Two languages.',W/2,portrait?650:420,W*.85,portrait?90:square?84:112,124,'center');
+  lines('One clear view.',W/2,portrait?770:545,W*.85,portrait?90:square?84:112,124,'center',palette.accent);
+  ctx.strokeStyle='#8fbad055';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(W*.18,portrait?950:660);ctx.lineTo(W*.82,portrait?950:660);ctx.stroke();
+  type('Original',W*.33,portrait?1040:735,portrait?32:26,{align:'center',color:palette.soft});type('Translation',W*.67,portrait?1040:735,portrait?32:26,{align:'center',color:palette.soft});ctx.restore();return;
+ }
+ if(t>=20){
+  const center=portrait?730:410;
+  wordmark(W/2,center,portrait?134:square?122:148);
+  lines('Every sentence. Side by side.',W/2,center+110,W*.84,portrait?45:square?40:54,60,'center',palette.soft);
+  const bw=portrait?570:480,bh=portrait?98:80,by=center+(portrait?280:220);
+  ctx.fillStyle=palette.ink;ctx.fillRect((W-bw)/2,by,bw,bh);
+  type('Translate your words',W/2,by+bh*.64,portrait?36:30,{align:'center',color:palette.bg,weight:600});
+  type('translate.shiroko.tools',W/2,by+bh+70,portrait?30:26,{align:'center',color:palette.soft});return;
+ }
+ const scene=t<5?'original':t<6?'loading':t<9?'reveal':t<14?'follow':t<18?'edit':'together';
+ const captions={original:['START WITH YOUR ORIGINAL','Bring a passage. Keep its voice.'],loading:['READY FOR ANOTHER LANGUAGE','Your text becomes an aligned translation.'],reveal:['TRANSLATION. SIDE BY SIDE.','The original and French, sentence by sentence.'],follow:['FOLLOW EVERY SENTENCE.','Compare the meaning without switching views.'],edit:['REFINE IN CONTEXT.','Edit the translation. Keep the original in view.'],together:['TWO LANGUAGES. ONE CLEAR VIEW.','Read together. Refine with confidence.']};
+ const starts={original:2,loading:5,reveal:6,follow:9,edit:14,together:18};
+ const entry=ease((t-starts[scene])/.22),headY=portrait?330:100;
+ ctx.save();ctx.globalAlpha=entry;ctx.translate(0,(1-entry)*16);
+ type('SHIROKO / TRANSLATION WITH CONTEXT',W/2,headY,portrait?22:square?17:18,{align:'center',color:palette.accent,weight:600});
+ const title=captions[scene][0],titleSize=fit(title,W*(portrait?.86:.9),portrait?62:square?42:66);
+ type(title,W/2,headY+(portrait?100:88),titleSize,{align:'center',weight:600});
+ lines(captions[scene][1],W/2,headY+(portrait?175:140),W*.85,portrait?34:square?24:30,46,'center',palette.soft);
+ ctx.restore();
+ const x=portrait?54:square?54:96,y=portrait?640:square?295:285,fw=W-2*x,bar=portrait?34:28;
+ const sourceH=portrait||square?900:540,fh=fw/1440*sourceH;
+ ctx.save();ctx.shadowColor='#0007';ctx.shadowBlur=35;ctx.shadowOffsetY=18;ctx.fillStyle=palette.panel;ctx.fillRect(x,y,fw,fh+bar);ctx.restore();
+ ctx.fillStyle=palette.panel;ctx.fillRect(x,y,fw,bar);
+ for(let i=0;i<3;i++){ctx.fillStyle='#91aeba';ctx.beginPath();ctx.arc(x+18+i*13,y+bar/2,3.5,0,Math.PI*2);ctx.fill();}
+ type('Original  /  French',x+fw/2,y+bar*.7,portrait?16:14,{align:'center',color:palette.soft});
+ if(video.readyState>=2)ctx.drawImage(video,0,0,1440,sourceH,x,y+bar,fw,fh);
+ ctx.strokeStyle='#52758a';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,fw-1,fh+bar-1);
+ const footerY=portrait?1450:1010;
+ type('Moby-Dick · Herman Melville',W/2,footerY,portrait?28:square?22:24,{align:'center',color:palette.soft});
+ type('Actual translation session · edited for length',W/2,footerY+42,portrait?22:square?17:18,{align:'center',color:palette.accent});
+ if(t>=6){const impact=t-6;const scale=impact<.18?1.14-.14*ease(impact/.18):1;wordmark(W-(portrait?90:square?70:100),portrait?210:46,portrait?34:square?27:32,scale,'right');if(impact<.14){ctx.fillStyle=`rgba(215,237,247,${.2*(1-impact/.14)})`;ctx.fillRect(0,0,W,H);}}
+}
+window.ready=new Promise(resolve=>{if(video.readyState>=2)resolve();else video.addEventListener('loadeddata',resolve,{once:true});});
+window.record=async()=>{
+ await window.ready;await document.fonts.ready;video.currentTime=0;
+ const start=performance.now();let playing=false,lastLog=-1;
+ await new Promise(resolve=>{
+  function tick(now){
+   const t=(now-start)/1000;
+   if(Math.floor(t/5)!==lastLog){lastLog=Math.floor(t/5);console.log(`Film time ${t.toFixed(1)}s`);}
+   if(t>=2&&!playing){playing=true;video.play();}
+   draw(Math.min(t,23));
+   // Sync marker is removed in the final encode. It locates the first film frame.
+   if(t<.12){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#fff';ctx.fillRect(0,0,4,4);ctx.restore();}
+   if(t<23.12)requestAnimationFrame(tick);else resolve();
+  }
+  requestAnimationFrame(tick);
+ });
+ video.pause();
+};
+draw(0);
+</script></body></html>

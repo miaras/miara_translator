@@ -1,0 +1,292 @@
+[
+  {
+    "code": "ko",
+    "name": "Korean",
+    "dir": "ltr"
+  },
+  {
+    "code": "en",
+    "name": "English",
+    "dir": "ltr"
+  },
+  {
+    "code": "ja",
+    "name": "Japanese",
+    "dir": "ltr"
+  },
+  {
+    "code": "fr",
+    "name": "French",
+    "dir": "ltr"
+  },
+  {
+    "code": "es",
+    "name": "Spanish",
+    "dir": "ltr"
+  },
+  {
+    "code": "de",
+    "name": "German",
+    "dir": "ltr"
+  },
+  {
+    "code": "zh",
+    "name": "Chinese",
+    "dir": "ltr"
+  },
+  {
+    "code": "nl",
+    "name": "Dutch",
+    "dir": "ltr"
+  },
+  {
+    "code": "ar",
+    "name": "Arabic",
+    "dir": "rtl"
+  },
+  {
+    "code": "pt",
+    "name": "Portuguese",
+    "dir": "ltr"
+  },
+  {
+    "code": "it",
+    "name": "Italian",
+    "dir": "ltr"
+  },
+  {
+    "code": "ru",
+    "name": "Russian",
+    "dir": "ltr"
+  },
+  {
+    "code": "hi",
+    "name": "Hindi",
+    "dir": "ltr"
+  },
+  {
+    "code": "bn",
+    "name": "Bengali",
+    "dir": "ltr"
+  },
+  {
+    "code": "ur",
+    "name": "Urdu",
+    "dir": "rtl"
+  },
+  {
+    "code": "tr",
+    "name": "Turkish",
+    "dir": "ltr"
+  },
+  {
+    "code": "vi",
+    "name": "Vietnamese",
+    "dir": "ltr"
+  },
+  {
+    "code": "th",
+    "name": "Thai",
+    "dir": "ltr"
+  },
+  {
+    "code": "id",
+    "name": "Indonesian",
+    "dir": "ltr"
+  },
+  {
+    "code": "ms",
+    "name": "Malay",
+    "dir": "ltr"
+  },
+  {
+    "code": "fil",
+    "name": "Filipino",
+    "dir": "ltr"
+  },
+  {
+    "code": "pl",
+    "name": "Polish",
+    "dir": "ltr"
+  },
+  {
+    "code": "uk",
+    "name": "Ukrainian",
+    "dir": "ltr"
+  },
+  {
+    "code": "cs",
+    "name": "Czech",
+    "dir": "ltr"
+  },
+  {
+    "code": "sk",
+    "name": "Slovak",
+    "dir": "ltr"
+  },
+  {
+    "code": "hu",
+    "name": "Hungarian",
+    "dir": "ltr"
+  },
+  {
+    "code": "ro",
+    "name": "Romanian",
+    "dir": "ltr"
+  },
+  {
+    "code": "bg",
+    "name": "Bulgarian",
+    "dir": "ltr"
+  },
+  {
+    "code": "el",
+    "name": "Greek",
+    "dir": "ltr"
+  },
+  {
+    "code": "sv",
+    "name": "Swedish",
+    "dir": "ltr"
+  },
+  {
+    "code": "da",
+    "name": "Danish",
+    "dir": "ltr"
+  },
+  {
+    "code": "nb",
+    "name": "Norwegian",
+    "dir": "ltr"
+  },
+  {
+    "code": "fi",
+    "name": "Finnish",
+    "dir": "ltr"
+  },
+  {
+    "code": "is",
+    "name": "Icelandic",
+    "dir": "ltr"
+  },
+  {
+    "code": "et",
+    "name": "Estonian",
+    "dir": "ltr"
+  },
+  {
+    "code": "lv",
+    "name": "Latvian",
+    "dir": "ltr"
+  },
+  {
+    "code": "lt",
+    "name": "Lithuanian",
+    "dir": "ltr"
+  },
+  {
+    "code": "sl",
+    "name": "Slovenian",
+    "dir": "ltr"
+  },
+  {
+    "code": "hr",
+    "name": "Croatian",
+    "dir": "ltr"
+  },
+  {
+    "code": "sr",
+    "name": "Serbian",
+    "dir": "ltr"
+  },
+  {
+    "code": "bs",
+    "name": "Bosnian",
+    "dir": "ltr"
+  },
+  {
+    "code": "sq",
+    "name": "Albanian",
+    "dir": "ltr"
+  },
+  {
+    "code": "mk",
+    "name": "Macedonian",
+    "dir": "ltr"
+  },
+  {
+    "code": "he",
+    "name": "Hebrew",
+    "dir": "rtl"
+  },
+  {
+    "code": "fa",
+    "name": "Persian",
+    "dir": "rtl"
+  },
+  {
+    "code": "sw",
+    "name": "Swahili",
+    "dir": "ltr"
+  },
+  {
+    "code": "af",
+    "name": "Afrikaans",
+    "dir": "ltr"
+  },
+  {
+    "code": "am",
+    "name": "Amharic",
+    "dir": "ltr"
+  },
+  {
+    "code": "ta",
+    "name": "Tamil",
+    "dir": "ltr"
+  },
+  {
+    "code": "te",
+    "name": "Telugu",
+    "dir": "ltr"
+  },
+  {
+    "code": "mr",
+    "name": "Marathi",
+    "dir": "ltr"
+  },
+  {
+    "code": "gu",
+    "name": "Gujarati",
+    "dir": "ltr"
+  },
+  {
+    "code": "pa",
+    "name": "Punjabi",
+    "dir": "ltr"
+  },
+  {
+    "code": "ne",
+    "name": "Nepali",
+    "dir": "ltr"
+  },
+  {
+    "code": "si",
+    "name": "Sinhala",
+    "dir": "ltr"
+  },
+  {
+    "code": "km",
+    "name": "Khmer",
+    "dir": "ltr"
+  },
+  {
+    "code": "lo",
+    "name": "Lao",
+    "dir": "ltr"
+  },
+  {
+    "code": "my",
+    "name": "Burmese",
+    "dir": "ltr"
+  }
+]

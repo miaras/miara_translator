@@ -4,15 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#10212b">
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg?v=ami-white-outline">
     <title>Shiroko — Translation with context</title>
     <meta name="description" content="Context-aware translation with sentence-by-sentence alignment, built for writing that deserves a closer reading.">
+    <script src="/theme.js"></script>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="home-page">
     <header class="site-header dark-header">
-        <a class="wordmark" href="index.html" aria-label="Shiroko home">shiroko<span class="wordmark-dot">.</span></a>
+        <a class="wordmark" href="index.html" aria-label="Shiroko home"><span class="wordmark-symbol" aria-hidden="true"></span>shiroko<span class="wordmark-dot">.</span></a>
         <nav aria-label="Main navigation">
+            
             <a href="#approach">The approach</a>
             <a href="#pricing">Pricing</a>
             <a href="app.html?signin=1">Sign in</a>
@@ -27,16 +30,33 @@
                 <h1>Every word<br>in its <em>right place.</em></h1>
                 <p class="hero-description">Context-aware translation that keeps the original and the translation together, sentence by sentence.</p>
                 <a href="app.html" class="button button-light">Start translating <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+                <a href="app.html?mode=improve" class="button button-light existing-home-link">Use Existing Translation</a>
             </div>
             <div class="hero-aside" aria-label="Example of aligned translation">
-                <div class="aside-top"><span>01 / 02</span><span>Original → Translation</span></div>
+                <div class="aside-top"><span>58 languages</span><span>Original → Translation</span></div>
                 <div class="translation-example">
                     <p class="example-source">The meaning lives between the lines.</p>
                     <div class="example-rule"></div>
-                    <p class="example-target" lang="ko">의미는 행간에 담겨 있습니다.</p>
+                    <div id="headline-viewport" class="headline-viewport" tabindex="0" role="region" aria-label="Headline translations in 58 languages">
+                        <div id="headline-track" class="headline-track"><div class="headline-group"><div class="headline-slide"><p class="example-target" lang="ko">의미는 행간에 담겨 있습니다.</p></div></div></div>
+                    </div>
+                    <button id="headline-pause" class="headline-pause" type="button" aria-pressed="false" aria-controls="headline-viewport" hidden>Pause scrolling</button>
                 </div>
                 <div class="aside-bottom"><span>Read in context.</span><i data-lucide="move-down-right" aria-hidden="true"></i></div>
             </div>
+        </section>
+
+        <section class="demo-section section-wrap" aria-labelledby="demo-heading">
+            <div class="demo-intro"><div><p class="demo-eyebrow">A closer look</p><h2 id="demo-heading">Two languages.<br><em>One clear view.</em></h2></div><p>Watch Moby-Dick move from English to French. Compare each sentence with the original, then refine it in context.</p></div>
+            <div class="demo-player">
+                <video controls playsinline preload="none" poster="/demo/side-by-side-poster.jpg" aria-label="Shiroko side-by-side translation film">
+                    <source src="/demo/side-by-side-launch.mp4?v=ami-final26" type="video/mp4">
+                    <track kind="captions" src="/demo/side-by-side-captions.vtt?v=ami-final26" srclang="en" label="English">
+                    Your browser does not support video. <a href="/demo/side-by-side-launch.mp4?v=ami-final26">Download the walkthrough</a>.
+                </video>
+            </div>
+            <div class="demo-footer"><a href="app.html" class="button button-light demo-cta">Start translating <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></div>
+            <details class="demo-transcript"><summary>Read the walkthrough</summary><ol><li>Paste the opening passage of Moby-Dick by Herman Melville and choose French.</li><li>Translate the passage and see the original beside the French translation.</li><li>Follow the aligned sentences and compare their meaning in one view.</li><li>Edit the first translated sentence while keeping the original visible.</li><li>The letter A morphs into hiragana み and settles into the Shiroko logo.</li></ol></details>
         </section>
 
         <section id="approach" class="approach section-wrap">
@@ -60,12 +80,41 @@
         </section>
 
         <section id="pricing" class="pricing section-wrap">
-            <div><h2>Clear from<br>the beginning.</h2><p>Estimate your translation cost as you write in the editor.</p></div>
-            <div class="pricing-detail"><p>Pay as you go</p><strong>$1.00 <span>/ 100K output tokens</span></strong><p>100K tokens is roughly 250 pages of text.</p><a href="app.html" class="text-link">Open the editor <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></div>
+            <div><h2>Your words.<br>Your monthly plan.</h2><p>One allowance across Standard, Fast, and Ultrafast. Choose the pace that fits.</p></div>
+            <div class="pricing-tiers">
+                <article class="pricing-tier monthly-plan">
+                    <div class="plan-heading"><h3>Personal</h3><span class="plan-price">$9/mo</span></div>
+                    <p class="plan-description">For everyday usage at school, home, or work.</p>
+                    <div class="plan-allowance"><p class="plan-pages">About 100 pages of text at Standard speed</p><p class="tier-description">50,000 monthly allowance tokens</p></div>
+                    <a href="app.html?plan=personal" class="secondary-btn">Choose Personal <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+                </article>
+                <article class="pricing-tier monthly-plan">
+                    <div class="plan-heading"><h3>Plus</h3><span class="plan-price">$19/mo</span></div>
+                    <p class="plan-description">If you're translating multiple essays or a book.</p>
+                    <div class="plan-allowance"><p class="plan-pages">About 240 pages of text at Standard speed</p><p class="tier-description">120,000 monthly allowance tokens</p></div>
+                    <a href="app.html?plan=plus" class="secondary-btn">Choose Plus <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+                </article>
+                <article class="pricing-tier monthly-plan">
+                    <div class="plan-heading"><h3>Pro</h3><span class="plan-price">$99/mo</span></div>
+                    <p class="plan-description">For translation professionals translating multiple books a month.</p>
+                    <div class="plan-allowance"><p class="plan-pages">About 1,300 pages of text at Standard speed</p><p class="tier-description">650,000 monthly allowance tokens</p></div>
+                    <a href="app.html?plan=pro" class="secondary-btn">Choose Pro <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+                </article>
+                <article class="pricing-tier human-review-tier">
+                    <div class="review-card-intro"><h3>Human Review</h3><p>Professional human translators for the highest quality translation.</p><p class="tier-description">Only English ↔ Korean is currently supported. More languages coming soon.</p></div>
+                    <div class="review-card-details"><p class="review-card-price">$0.04 per English or Korean word</p><p>$10 per 250-word page · $10 minimum</p><p class="tier-description">Word count uses the original text. Korean words are counted by spaces.</p><button type="button" class="secondary-btn" data-human-review-open>Request human review <i data-lucide="arrow-up-right" aria-hidden="true"></i></button></div>
+                </article>
+                <p class="pricing-footnote">Page estimates assume about 500 source tokens per page. Actual length varies by language and formatting. Fast uses 2× the allowance; Ultrafast uses 6×.</p>
+                <p class="pricing-footnote book-pricing">Monthly allowance can be shared across speeds: Standard 1×, Fast 2×, Ultrafast 6×.</p>
+                <p id="book-pricing-note" class="pricing-footnote">Allowance resets each paid billing period, with no rollover. Cancel renewal anytime. Improvement and regeneration also consume allowance. Optional prepaid top-ups and Human Review are separate.</p>
+            </div>
         </section>
     </main>
 
-    <footer class="site-footer"><a class="wordmark" href="index.html">shiroko<span class="wordmark-dot">.</span></a><span>Thoughtful translation, line by line.</span><span>© 2026 Shiroko Translator</span></footer>
+    <footer class="site-footer"><a class="wordmark" href="index.html"><span class="wordmark-symbol" aria-hidden="true"></span>shiroko<span class="wordmark-dot">.</span></a><span>Questions? Contact <a href="mailto:support@shiroko.tools">support@shiroko.tools</a></span><span>© 2026 Shiroko Translator</span></footer>
+    <script type="module" src="headline-carousel.js"></script>
+    <script type="module" src="interface-i18n.js"></script>
+    <script type="module" src="human-review-ui.js"></script>
     <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>
