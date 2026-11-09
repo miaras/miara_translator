@@ -1,3 +1,5 @@
+import { parseTerms, formatTerms, mergeTerms } from './terminology.js';
+import { resumableProgress, validProgress, sameSource, sameTerms } from './translation-progress.js';
 import './referral-notification.js';
 import { initResultWorkbench } from './result-workbench.js';
 import { readDraftValue, saveDraftValue, removeDraftValue, loadDraftStorage, flushDraftStorage } from './draft-storage.js';
@@ -18,8 +20,17 @@ let currentSourceText = '';
 let currentSourceLang = '';
 let currentInstructions = '';
 let currentDictionary = {};
+let currentCustomTerms = {};
 let currentSummary = '';
 let currentSavedId = null;
+let currentProgress = null;
+let currentJob = null;
+let lastServerRows = [];
+let jobPollTimer;
+let jobPollInFlight = false;
+let jobControlVersion = 0;
+let translationRunning = false;
+let resumePending = false;
 let currentUser = null;
 let authMode = 'login';
 let saveAfterLogin = false;
@@ -50,6 +61,8 @@ const targetLangSelect = document.getElementById('target-lang');
 const alignmentGrid = document.getElementById('alignment-grid');
 const loader = document.getElementById('loader');
 const customInstructions = document.getElementById('custom-instructions');
+const customTermsInput = document.getElementById('custom-terms');
+customTermsInput?.addEventListener('input', () => saveDraftValue('SHIROKO_CUSTOM_TERMS_TEXT', customTermsInput.value));
 
 // Action Buttons
 const copyBtn = document.getElementById('copy-btn');
@@ -70,6 +83,11 @@ speedOptions.forEach(option => option.addEventListener('change', () => {
     saveDraftValue('SHIROKO_SPEED', currentSpeed);
     refreshSpeedSettings();
     updatePriceEstimate();
+    if (currentJob && currentSavedId) {
+        void request(`/api/translations/${currentSavedId}/speed`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ speed: currentSpeed }) })
+            .then(({ translation }) => { currentJob = translation.job; })
+            .catch(error => { document.getElementById('processing-status').textContent = error.message; });
+    }
 }));
 refreshSpeedSettings();
 const priceDisplay = document.getElementById('price-estimate');
@@ -215,12 +233,13 @@ function preserveSocialDraft() {
         saveDraftValue('SHIROKO_SOURCE_TEXT', sourceText.value);
         saveDraftValue('SHIROKO_TARGET_LANG', targetLangSelect.value);
         saveDraftValue('SHIROKO_INSTRUCTIONS', customInstructions.value);
+        saveDraftValue('SHIROKO_CUSTOM_TERMS_TEXT', customTermsInput?.value || '');
         saveDraftValue('SHIROKO_EXISTING_TRANSLATION', existingTranslation.value);
         saveDraftValue('SHIROKO_MODE', improveMode ? 'improve' : 'translate');
     }
     if (currentSavedId) return `/result.html?id=${currentSavedId}`;
     if (resultsPage && currentData.length) {
-        saveDraftValue('SHIROKO_AUTH_DRAFT', JSON.stringify({ rows: currentData, sourceText: currentSourceText, sourceLang: currentSourceLang, targetLang: currentTargetLang, instructions: currentInstructions, dictionary: currentDictionary, summary: currentSummary }));
+        saveDraftValue('SHIROKO_AUTH_DRAFT', JSON.stringify({ rows: currentData, sourceText: currentSourceText, sourceLang: currentSourceLang, targetLang: currentTargetLang, instructions: currentInstructions, dictionary: currentDictionary, customTerms: currentCustomTerms, summary: currentSummary, ...(currentProgress ? { progress: currentProgress } : {}) }));
         return '/result.html';
     }
     return '/app.html';
@@ -296,11 +315,13 @@ document.getElementById('sign-out')?.addEventListener('click', async () => {
         await request('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         currentUser = null;
         currentSavedId = null;
-        ['SHIROKO_SAVED_ID', 'SHIROKO_SOURCE_TEXT', 'SHIROKO_TARGET_LANG', 'SHIROKO_INSTRUCTIONS', 'SHIROKO_TRANSLATION_DATA', 'SHIROKO_EXISTING_TRANSLATION', 'SHIROKO_MODE', 'SHIROKO_AUTH_DRAFT'].forEach(key => removeDraftValue(key));
+        ['SHIROKO_TRANSLATION_CHECKPOINT', 'SHIROKO_CUSTOM_TERMS_TEXT', 'SHIROKO_SAVED_ID', 'SHIROKO_SOURCE_TEXT', 'SHIROKO_TARGET_LANG', 'SHIROKO_INSTRUCTIONS', 'SHIROKO_TRANSLATION_DATA', 'SHIROKO_EXISTING_TRANSLATION', 'SHIROKO_MODE', 'SHIROKO_AUTH_DRAFT'].forEach(key => removeDraftValue(key));
         refreshAccount();
         if (landingPage) {
             sourceText.value = '';
             customInstructions.value = '';
+            if (customTermsInput) customTermsInput.value = '';
+            currentCustomTerms = {};
             existingTranslation.value = '';
             updatePriceEstimate();
             await loadLibrary();
@@ -324,7 +345,7 @@ async function loadLibrary() {
             const title = document.createElement('strong');
             title.textContent = item.title;
             const detail = document.createElement('span');
-            detail.textContent = `${item.targetLang} · ${item.rowCount} sentences · Updated ${new Date(item.updatedAt).toLocaleDateString()}`;
+            detail.textContent = `${item.targetLang} · ${item.rowCount} sentences${item.job ? ` · ${item.job.status} (${item.completedChunks}/${item.totalChunks} chunks)` : ''} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`;
             link.append(title, detail);
             list.appendChild(link);
         });
@@ -334,8 +355,55 @@ let saveTimer;
 let savePromise;
 let changeVersion = 0;
 let savedVersion = 0;
+function persistTranslationCheckpoint() {
+    if (!currentProgress || !currentUser || currentJob) return;
+    saveDraftValue('SHIROKO_TRANSLATION_CHECKPOINT', JSON.stringify({ id: currentSavedId, userId: currentUser.id,
+        sourceText: currentSourceText, sourceLang: currentSourceLang, targetLang: currentTargetLang, instructions: currentInstructions,
+        rows: currentData, dictionary: currentDictionary, customTerms: currentCustomTerms, summary: currentSummary, progress: currentProgress }));
+}
+function localTranslationCheckpoint() {
+    if (!currentUser) return null;
+    try {
+        const checkpoint = JSON.parse(readDraftValue('SHIROKO_TRANSLATION_CHECKPOINT'));
+        return checkpoint?.userId === currentUser.id && Array.isArray(checkpoint.rows) && validProgress(checkpoint.progress, checkpoint.sourceText) ? checkpoint : null;
+    } catch { return null; }
+}
+function showResumeTranslation() {
+    const button = document.getElementById('resume-translation');
+    if (!button) return;
+    button.hidden = translationRunning || !currentProgress || currentProgress.nextChunk >= currentProgress.totalChunks;
+    if (!button.hidden) button.textContent = `Resume translation · ${currentProgress.nextChunk} of ${currentProgress.totalChunks} chunks complete`;
+    const stop = document.getElementById('stop-translation');
+    if (stop) {
+        stop.hidden = !currentJob || !translationRunning; stop.disabled = currentJob?.status === 'stopping';
+        stop.textContent = currentJob?.status === 'stopping' ? 'Stopping after current chunk…' : 'Stop translation';
+    }
+}
+async function resumeTranslation() {
+    if (translationRunning || resumePending || !currentProgress || currentProgress.nextChunk >= currentProgress.totalChunks) return;
+    resumePending = true;
+    const button = document.getElementById('resume-translation');
+    if (button) button.disabled = true;
+    try {
+        if (currentUser && savedVersion !== changeVersion) {
+            await saveTranslation();
+            if (savedVersion !== changeVersion) { document.getElementById('processing-status').textContent = 'Reconnect to save your completed chunks, then resume.'; return; }
+        }
+        if (!currentSavedId && !currentData.length) {
+            await startServerTranslation(currentSourceText, currentTargetLang, currentInstructions, currentProgress.mode === 'improve' ? currentProgress.existingTranslation : null);
+            return;
+        }
+        if (!currentSavedId) { markUnsaved(); await saveTranslation(); }
+        if (!currentSavedId) return;
+        const { translation } = await request(`/api/translations/${currentSavedId}/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ speed: currentSpeed, existingTranslation: currentProgress.existingTranslation }) });
+        jobControlVersion++; applyServerTranslation(translation); scheduleJobPoll();
+    } catch (error) { document.getElementById('processing-status').textContent = error.message; }
+    finally { resumePending = false; if (button) button.disabled = false; }
+}
+
 function markUnsaved() {
     changeVersion++;
+    persistTranslationCheckpoint();
     if (!saveStatus) return;
     saveStatus.textContent = currentUser ? 'Waiting to save…' : 'Sign in to save your translation.';
     if (saveBtn) saveBtn.textContent = 'Save changes';
@@ -353,10 +421,12 @@ function saveTranslation() {
             do {
                 const version = changeVersion;
                 const title = currentSourceText.trim().split(/\n|[.!?。！？]/)[0].slice(0, 80).trim() || 'Untitled translation';
-                const payload = JSON.stringify({ title, sourceText: currentSourceText, sourceLang: currentSourceLang, targetLang: currentTargetLang, instructions: currentInstructions, rows: currentData, dictionary: currentDictionary, summary: currentSummary });
+                const payload = JSON.stringify({ title, sourceText: currentSourceText, sourceLang: currentSourceLang, targetLang: currentTargetLang, instructions: currentInstructions, rows: currentData, dictionary: currentDictionary, customTerms: currentCustomTerms, summary: currentSummary, ...(currentProgress ? { progress: currentProgress } : {}) });
                 saveStatus.textContent = 'Saving…';
                 const { translation } = await request(currentSavedId ? `/api/translations/${currentSavedId}` : '/api/translations', { method: currentSavedId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
                 currentSavedId = translation.id;
+                if (translation.job) { jobControlVersion++; applyServerTranslation(translation); }
+                persistTranslationCheckpoint();
                 savedVersion = version;
                 saveDraftValue('SHIROKO_SAVED_ID', currentSavedId);
                 history.replaceState(null, '', `result.html?id=${encodeURIComponent(currentSavedId)}`);
@@ -379,11 +449,15 @@ function saveTranslation() {
     return savePromise;
 }
 saveBtn?.addEventListener('click', saveTranslation);
+document.getElementById('resume-translation')?.addEventListener('click', resumeTranslation);
+document.getElementById('stop-translation')?.addEventListener('click', stopTranslation);
 window.addEventListener('shiroko:draft-storage-error', () => { if (saveStatus) saveStatus.textContent = 'Browser draft storage is full. Keep this page open until your account save completes.'; });
 document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentJob) scheduleJobPoll(0);
     if (document.visibilityState === 'hidden' && currentUser && currentData.length && savedVersion !== changeVersion) void saveTranslation();
 });
 window.addEventListener('online', () => {
+    if (currentJob) scheduleJobPoll(0);
     if (currentUser && currentData.length && savedVersion !== changeVersion) void saveTranslation();
 });
 
@@ -407,6 +481,8 @@ if (translateBtn) {
         const instructions = customInstructions.value.trim();
 
         if (!text) return alert("Please enter some original text.");
+        try { parseTerms(customTermsInput?.value || ''); } catch (error) { customTermsInput?.focus(); alert(error.message); return; }
+        saveDraftValue('SHIROKO_CUSTOM_TERMS_TEXT', customTermsInput?.value || '');
         if (improveMode && !existingTranslation.value.trim()) return alert("Please enter the existing translation to improve.");
         saveDraftValue('SHIROKO_MODE', improveMode ? 'improve' : 'translate');
         saveDraftValue('SHIROKO_EXISTING_TRANSLATION', existingTranslation.value.trim());
@@ -414,11 +490,17 @@ if (translateBtn) {
         saveDraftValue('SHIROKO_SOURCE_TEXT', text);
         saveDraftValue('SHIROKO_TARGET_LANG', targetLang);
         saveDraftValue('SHIROKO_INSTRUCTIONS', instructions);
-        removeDraftValue('SHIROKO_SAVED_ID');
         if (!currentUser) { openAuth(); return; }
         if ((currentUser.balanceMicros || 0) <= 0 && !(currentUser.subscription?.remainingTokens > 0) && !(currentUser.subscription?.prepaidTokens > 0)) { showUpgradeModal(); return; }
-        await flushDraftStorage();
-        window.location.href = improveMode ? 'result.html?mode=improve' : 'result.html';
+        translateBtn.disabled = true;
+        try {
+            const { translation } = await request('/api/translation-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sourceText: text, targetLang, instructions, mode: improveMode ? 'improve' : 'translate',
+                    existingTranslation: existingTranslation.value.trim(), customTerms: parseTerms(customTermsInput?.value || ''), speed: currentSpeed }) });
+            await flushDraftStorage();
+            location.href = `result.html?id=${encodeURIComponent(translation.id)}`;
+        } catch (error) { alert(`Could not start translation: ${error.message}`); }
+        finally { translateBtn.disabled = false; }
     };
 }
 
@@ -507,6 +589,7 @@ window.addEventListener('load', async () => {
         sourceText.value = readDraftValue('SHIROKO_SOURCE_TEXT') || '';
         targetLangSelect.value = readDraftValue('SHIROKO_TARGET_LANG') || 'Korean';
         customInstructions.value = readDraftValue('SHIROKO_INSTRUCTIONS') || '';
+        if (customTermsInput) customTermsInput.value = readDraftValue('SHIROKO_CUSTOM_TERMS_TEXT') || '';
         existingTranslation.value = readDraftValue('SHIROKO_EXISTING_TRANSLATION') || '';
         setImproveMode(new URLSearchParams(location.search).get('mode') === 'improve');
         updatePriceEstimate();
@@ -524,9 +607,11 @@ window.addEventListener('load', async () => {
                 currentSourceLang = draft.sourceLang || '';
                 currentTargetLang = draft.targetLang;
                 currentInstructions = draft.instructions;
-                currentDictionary = draft.dictionary;
+                currentCustomTerms = draft.customTerms || {};
+                currentDictionary = mergeTerms(draft.dictionary, currentCustomTerms);
                 currentSummary = draft.summary;
-                renderResults();
+                currentProgress = validProgress(draft.progress, draft.sourceText) ? draft.progress : resumableProgress(draft);
+                renderResults(); showResumeTranslation();
                 document.getElementById('processing-status').textContent = 'Your translation is ready.';
                 markUnsaved();
                 await saveTranslation();
@@ -537,22 +622,37 @@ window.addEventListener('load', async () => {
         const savedId = new URLSearchParams(location.search).get('id');
         if (savedId) {
             try {
-                const { translation } = await request(`/api/translations/${encodeURIComponent(savedId)}`);
+                let { translation } = await request(`/api/translations/${encodeURIComponent(savedId)}`);
+                const local = localTranslationCheckpoint();
+                const savedProgress = resumableProgress(translation);
+                if (!translation.job && local?.id === translation.id && sameSource(local.sourceText, translation.sourceText)
+                    && local.targetLang === translation.targetLang && local.instructions === translation.instructions
+                    && local.progress.nextChunk > (savedProgress?.nextChunk ?? translation.progress?.nextChunk ?? 0)) translation = local;
+                currentProgress = resumableProgress(translation) || (validProgress(translation.progress, translation.sourceText) ? translation.progress : null);
                 currentSavedId = translation.id;
                 currentSourceText = translation.sourceText;
                 currentSourceLang = translation.sourceLang || '';
                 currentTargetLang = translation.targetLang;
                 currentInstructions = translation.instructions;
                 currentData = translation.rows;
-                currentDictionary = translation.dictionary || {};
+                currentCustomTerms = translation.customTerms || {};
+                currentDictionary = mergeTerms(translation.dictionary, currentCustomTerms);
+                saveDraftValue('SHIROKO_CUSTOM_TERMS_TEXT', formatTerms(currentCustomTerms));
                 currentSummary = translation.summary || '';
                 saveDraftValue('SHIROKO_SOURCE_TEXT', currentSourceText);
                 saveDraftValue('SHIROKO_TARGET_LANG', currentTargetLang);
                 saveDraftValue('SHIROKO_INSTRUCTIONS', currentInstructions);
                 saveDraftValue('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
+                if (translation.job) { applyServerTranslation(translation, true); scheduleJobPoll(); return; }
                 renderResults();
                 document.getElementById('processing-status').textContent = `Saved translation · ${currentTargetLang}`;
-                saveStatus.textContent = 'All changes saved';
+                saveStatus.textContent = translation === local ? 'Recovered completed chunks from this browser.' : 'All changes saved';
+                showResumeTranslation();
+                if (translation === local) markUnsaved();
+                if (currentProgress && currentProgress.nextChunk < currentProgress.totalChunks) {
+                    document.getElementById('processing-status').textContent = 'Translation paused. Resume from the last completed chunk.';
+                    if (new URLSearchParams(location.search).get('resume') === '1') await resumeTranslation();
+                }
                 return;
             } catch (e) {
                 document.getElementById('processing-status').textContent = e.message;
@@ -569,93 +669,106 @@ window.addEventListener('load', async () => {
             currentSourceText = text;
             currentTargetLang = targetLang;
             currentInstructions = instructions || '';
-            await processAdvancedStreaming(text, targetLang, instructions, new URLSearchParams(location.search).get('mode') === 'improve' ? readDraftValue('SHIROKO_EXISTING_TRANSLATION') : null);
+            const local = localTranslationCheckpoint();
+            const draft = new URLSearchParams(location.search).get('mode') === 'improve' ? readDraftValue('SHIROKO_EXISTING_TRANSLATION') : null;
+            if (local && sameSource(local.sourceText, text) && local.targetLang === targetLang && local.instructions === (instructions || '')
+                && sameTerms(local.customTerms, parseTerms(readDraftValue('SHIROKO_CUSTOM_TERMS_TEXT') || ''))
+                && local.progress.mode === (draft === null ? 'translate' : 'improve') && (draft === null || sameSource(local.progress.existingTranslation, draft))) {
+                currentSavedId = local.id; currentSourceText = local.sourceText;
+                currentData = local.rows; currentDictionary = local.dictionary; currentCustomTerms = local.customTerms;
+                currentSummary = local.summary; currentSourceLang = local.sourceLang || ''; currentProgress = local.progress;
+                if (currentProgress.nextChunk < currentProgress.totalChunks) await resumeTranslation();
+                else {
+                    renderResults(); showResumeTranslation();
+                    document.getElementById('processing-status').textContent = 'Translation complete. Recovered the completed result from this browser.';
+                    markUnsaved(); await saveTranslation();
+                }
+                return;
+            }
+            await startServerTranslation(text, targetLang, instructions, draft);
         } else {
             window.location.href = 'app.html';
         }
     }
 });
 
-async function processAdvancedStreaming(fullText, targetLang, instructions, draft = null) {
-    const statusEl = document.getElementById('processing-status');
-    setThreeWay(draft !== null);
-    refreshResultWorkbench();
-    const chunks = sourceChunks(fullText);
-    const segmenter = new Intl.Segmenter(undefined, { granularity: 'sentence' });
-
-    const draftSentences = draft === null ? [] : Array.from(segmenter.segment(draft), ({ segment }) => segment.match(/[\s\S]{1,5000}/gu) || []).flat();
-    let draftCursor = 0;
-    let summary = "The beginning of the document.";
-    let dictionary = {};
-    let previousText = "";
-    let previousTranslatedText = ""; // Track previous output
-    currentData = [];
-
-    for (let i = 0; i < chunks.length; i++) {
-        if (statusEl) statusEl.textContent = `${draft === null ? 'Translating' : 'Improving'} chunk ${i + 1} of ${chunks.length}...`;
-
-        // Show skeleton for this chunk
-        const skeletonId = `skeleton-${i}`;
-        appendSkeleton(skeletonId);
-
-        try {
-            let draftWindow = [];
-            if (draft !== null) {
-                let length = 0;
-                for (const sentence of draftSentences.slice(draftCursor)) {
-                    if (length + sentence.length > 30000 && draftWindow.length) break;
-                    draftWindow.push(sentence);
-                    length += sentence.length;
-                }
-            }
-            const result = draft === null ? await translateAndAlignRecursive(
-                chunks[i],
-                targetLang,
-                instructions,
-                summary,
-                dictionary,
-                previousText,
-                previousTranslatedText // Pass previous output
-            ) : await request('/api/translate', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ speed: currentSpeed, mode: 'improve', text: chunks[i], targetLanguage: targetLang, instructions,
-                    summary, dictionary: Object.fromEntries(Object.entries(dictionary).slice(-500)), previousContext: previousText, previousTranslatedText,
-                    existingTranslation: draftWindow.join(''), draftSentences: draftWindow,
-                    isLastChunk: i === chunks.length - 1 })
-            });
-            if (draft !== null) draftCursor += result.consumedDraftSentences;
-
-            // Remove skeleton
-            removeSkeleton(skeletonId);
-
-            // Update state for next recursion
-            summary = result.newSummary;
-            if (result.sourceLanguage) currentSourceLang = result.sourceLanguage;
-            dictionary = { ...dictionary, ...result.newProperNouns };
-            currentDictionary = dictionary;
-            currentSummary = summary;
-            previousText = chunks[i];
-
-            // Store last ~1000 tokens (approx 4000 chars) of translation
-            const currentTranslation = result.alignedRows.map(row => row.target).join(' ');
-            previousTranslatedText = currentTranslation.slice(-4000);
-
-            // Render and save
-            appendChunkToUI(result.alignedRows);
-            currentData = currentData.concat(result.alignedRows);
-            refreshResultWorkbench();
-            saveDraftValue('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));
-            markUnsaved();
-        } catch (error) {
-            console.error('Streaming Error:', error);
-            removeSkeleton(skeletonId); // Ensure removal on error
-            if (statusEl) statusEl.textContent = `Translation stopped: ${error.message}`;
-            return;
+function scheduleJobPoll(delay = 1200) {
+    clearTimeout(jobPollTimer);
+    if (currentJob && ['running', 'stopping'].includes(currentJob.status)) jobPollTimer = setTimeout(pollTranslationJob, delay);
+}
+async function pollTranslationJob() {
+    if (jobPollInFlight || !currentSavedId || !currentJob) return;
+    jobPollInFlight = true;
+    try {
+        const from = lastServerRows.length, version = jobControlVersion;
+        const update = await request(`/api/translations/${currentSavedId}/job?from=${from}`);
+        if (version !== jobControlVersion || update.totalRows < lastServerRows.length) return;
+        applyServerTranslation({ id: currentSavedId, sourceText: currentSourceText, targetLang: currentTargetLang, instructions: currentInstructions,
+            ...update, progress: { ...currentProgress, ...update.progress }, rows: lastServerRows.slice(0, from).concat(update.rows) });
+    } catch (error) {
+        const status = document.getElementById('processing-status');
+        if (status) status.textContent = 'Connection interrupted. Your translation continues on the server; reconnecting…';
+    } finally { jobPollInFlight = false; scheduleJobPoll(); }
+}
+function applyServerTranslation(translation, initial = false) {
+    const dirty = new Map();
+    if (!initial) currentData.forEach((row, index) => {
+        const base = lastServerRows[index];
+        if (base && (row.target !== base.target || !!row.bookmarked !== !!base.bookmarked)) dirty.set(index, row);
+    });
+    const rows = translation.rows.map((row, index) => dirty.has(index) ? { ...row, target: dirty.get(index).target, bookmarked: dirty.get(index).bookmarked } : { ...row });
+    const previousLength = currentData.length;
+    let contentChanged = initial || previousLength > rows.length;
+    if (!initial && !contentChanged) {
+        const elements = alignmentGrid.querySelectorAll('.alignment-row');
+        for (let index = 0; index < previousLength; index++) {
+            if (currentData[index].source !== rows[index].source) { contentChanged = true; break; }
+            const target = elements[index]?.querySelector('.target-item');
+            if (target && target.textContent !== rows[index].target) target.textContent = rows[index].target;
         }
     }
-
-    await saveTranslation();
-    if (statusEl) statusEl.textContent = draft === null ? "Translation Complete." : "Translation improvement complete.";
+    const appended = rows.slice(previousLength), termsDirty = savedVersion !== changeVersion;
+    currentSavedId = translation.id; currentJob = translation.job || null;
+    if (initial && validSpeed(currentJob?.speed)) { currentSpeed = currentJob.speed; saveDraftValue('SHIROKO_SPEED', currentSpeed); refreshSpeedSettings(); }
+    currentProgress = translation.progress || null;
+    currentSourceText = translation.sourceText; currentSourceLang = translation.sourceLang || '';
+    currentTargetLang = translation.targetLang; currentInstructions = translation.instructions; currentSummary = translation.summary || '';
+    if (!termsDirty || initial) currentCustomTerms = translation.customTerms || {};
+    currentDictionary = mergeTerms(translation.dictionary, currentCustomTerms);
+    if (contentChanged) { currentData = rows; renderResults(); }
+    else {
+        if (appended.length) appendChunkToUI(appended);
+        currentData = rows; refreshResultWorkbench();
+    }
+    if (currentProgress?.mode === 'improve') setThreeWay(true);
+    lastServerRows = translation.rows.map(row => ({ ...row }));
+    translationRunning = !!currentJob && ['running', 'stopping'].includes(currentJob.status);
+    const status = document.getElementById('processing-status');
+    if (currentJob?.status === 'stopping') status.textContent = 'Stopping after the current chunk is saved…';
+    else if (currentJob?.status === 'running') status.textContent = `${currentProgress.mode === 'improve' ? 'Improving' : 'Translating'} chunk ${Math.min(currentProgress.nextChunk + 1, currentProgress.totalChunks)} of ${currentProgress.totalChunks}. Runs on the server — you can close this page.`;
+    else if (currentJob?.status === 'completed') status.textContent = 'Translation complete. All chunks saved.';
+    else if (currentJob?.status === 'failed') status.textContent = currentJob.error || 'Translation stopped. Resume to try again.';
+    else if (currentJob?.status === 'paused') status.textContent = currentJob.error || 'Translation stopped. Resume whenever you are ready.';
+    if (!termsDirty || initial) saveStatus.textContent = 'All changes saved';
+    showResumeTranslation();
+}
+async function stopTranslation() {
+    if (!currentSavedId || !currentJob || currentJob.status !== 'running') return;
+    const button = document.getElementById('stop-translation'); button.disabled = true;
+    try {
+        const { translation } = await request(`/api/translations/${currentSavedId}/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        jobControlVersion++; applyServerTranslation(translation); scheduleJobPoll(300);
+    } catch (error) { document.getElementById('processing-status').textContent = error.message; button.disabled = false; }
+}
+async function startServerTranslation(fullText, targetLang, instructions, draft = null) {
+    const status = document.getElementById('processing-status'); status.textContent = 'Starting translation on the server…';
+    try {
+        const { translation } = await request('/api/translation-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sourceText: fullText, targetLang, instructions: instructions || '', mode: draft === null ? 'translate' : 'improve',
+                existingTranslation: draft || '', customTerms: parseTerms(readDraftValue('SHIROKO_CUSTOM_TERMS_TEXT') || ''), speed: currentSpeed }) });
+        applyServerTranslation(translation, true);
+        history.replaceState(null, '', `result.html?id=${encodeURIComponent(translation.id)}`); scheduleJobPoll();
+    } catch (error) { status.textContent = error.message; }
 }
 
 function appendChunkToUI(rows) {
@@ -710,38 +823,6 @@ function appendChunkToUI(rows) {
     if (window.lucide) window.lucide.createIcons();
 }
 
-async function translateAndAlignRecursive(text, targetLanguage, instructions, summary, dictionary, previousContext, previousTranslatedText) {
-    return request('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ speed: currentSpeed, mode: 'translate', text, targetLanguage, instructions, summary, dictionary, previousContext, previousTranslatedText })
-    });
-}
-
-function appendSkeleton(id) {
-    const row = document.createElement('div');
-    row.id = id;
-    row.className = 'skeleton-row';
-
-    // Source Skeleton
-    const sourceCol = document.createElement('div');
-    sourceCol.innerHTML = '<div class="skeleton-text"></div><div class="skeleton-text"></div>';
-
-    // Target Skeleton
-    const targetCol = document.createElement('div');
-    targetCol.innerHTML = '<div class="skeleton-text"></div><div class="skeleton-text"></div>';
-
-    row.appendChild(sourceCol);
-    if (resultsPage.classList.contains('three-way')) row.appendChild(sourceCol.cloneNode(true));
-    row.appendChild(targetCol);
-    alignmentGrid.appendChild(row);
-
-}
-
-function removeSkeleton(id) {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-}
 
 async function showUpgradeModal() {
     if (!currentUser) { openAuth(); return; }
@@ -923,7 +1004,7 @@ async function handleRegenerate(index, btn) {
         const { translation: newTranslation } = await request('/api/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ speed: currentSpeed, mode: 'regenerate', text: sentenceToTranslate, targetLanguage: currentTargetLang, instructions: currentInstructions, contextBefore, contextAfter })
+            body: JSON.stringify({ speed: currentSpeed, mode: 'regenerate', text: sentenceToTranslate, targetLanguage: currentTargetLang, instructions: currentInstructions, dictionary: mergeTerms(currentDictionary, currentCustomTerms), contextBefore, contextAfter })
         });
 
         // Update data and UI
@@ -974,7 +1055,22 @@ function showLoader(show) {
 }
 
 const syncResultWorkbench = initResultWorkbench({
-    getState: () => ({ rows: currentData, sourceText: currentSourceText, sourceLang: currentSourceLang, targetLang: currentTargetLang, dictionary: currentDictionary }),
+    requestResearch: async input => {
+        if (!currentUser) { openAuth(); throw new Error('Sign in to research a sentence.'); }
+        return request('/api/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+    },
+    setBookmark: (index, bookmarked) => { currentData[index].bookmarked = bookmarked; saveDraftValue('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData)); markUnsaved(); },
+    setTerm: (source, target) => {
+        const terms = parseTerms(formatTerms({ ...currentCustomTerms, [source]: target }));
+        currentCustomTerms = terms; currentDictionary = mergeTerms(currentDictionary, terms);
+        saveDraftValue('SHIROKO_CUSTOM_TERMS_TEXT', formatTerms(terms)); markUnsaved();
+    },
+    removeTerm: source => {
+        currentCustomTerms = Object.fromEntries(Object.entries(currentCustomTerms).filter(([key]) => key !== source));
+        currentDictionary = Object.fromEntries(Object.entries(currentDictionary).filter(([key]) => key !== source));
+        saveDraftValue('SHIROKO_CUSTOM_TERMS_TEXT', formatTerms(currentCustomTerms)); markUnsaved();
+    },
+    getState: () => ({ rows: currentData, sourceText: currentSourceText, sourceLang: currentSourceLang, targetLang: currentTargetLang, dictionary: currentDictionary, customTerms: currentCustomTerms, summary: currentSummary }),
     replaceTargets: targets => {
         currentData.forEach((row, index) => { row.target = targets[index]; });
         saveDraftValue('SHIROKO_TRANSLATION_DATA', JSON.stringify(currentData));

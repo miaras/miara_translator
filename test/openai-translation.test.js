@@ -74,3 +74,13 @@ for (const [speed, tier] of [['standard', 'default'], ['fast', 'fast'], ['ultraf
 test('invalid speed is rejected before calling OpenAI', async () => {
     await assert.rejects(translateWithOpenAI({ speed: 'invalid' }, () => assert.fail('Unexpected API call'), 'test-key'), /Invalid translation speed/);
 });
+
+test('sentence regeneration receives the saved terminology dictionary', async () => {
+    let payload;
+    await translateWithOpenAI({ mode: 'regenerate', text: 'Shiroko.', targetLanguage: 'Korean', dictionary: { Shiroko: '시로코' } }, async (_url, options) => {
+        payload = JSON.parse(options.body);
+        return response('시로코.');
+    }, 'test-key');
+    assert.deepEqual(JSON.parse(payload.input[1].content).dictionary, { Shiroko: '시로코' });
+    assert.match(payload.input[0].content, /dictionary/);
+});

@@ -3,28 +3,29 @@ import { balance } from './polar.js';
 import { subscriptionState, prepaidTokens } from './subscriptions.js';
 import { priceMicros } from './pricing.js';
 
-export function createAllowanceBilling({ store, persist, transaction }) {
-    store.ocrReservations ||= [];
+export function createAllowanceBilling({ store, persist, transaction, service = 'ocr' }) {
+    const reservationKey = service === 'research' ? 'researchReservations' : 'ocrReservations';
+    store[reservationKey] ||= [];
     function entry(reservation, tokens, kind, suffix) {
         if (!tokens) return;
         const { id, userId, periodId } = reservation;
-        store.subscriptionUsage.push({ id: `${id}:${suffix}`, userId, periodId, tokens, kind, service: 'ocr', createdAt: new Date().toISOString() });
+        store.subscriptionUsage.push({ id: `${id}:${suffix}`, userId, periodId, tokens, kind, service, createdAt: new Date().toISOString() });
     }
     function creditEntry(reservation, amountMicros, kind, suffix) {
         if (!amountMicros) return;
-        store.billingLedger.push({ id: `${reservation.id}:${suffix}`, userId: reservation.userId, amountMicros, kind, service: 'ocr', createdAt: new Date().toISOString() });
+        store.billingLedger.push({ id: `${reservation.id}:${suffix}`, userId: reservation.userId, amountMicros, kind, service, createdAt: new Date().toISOString() });
     }
     return {
         reserve: (user, tokens) => transaction(async () => {
-            if (!Number.isSafeInteger(tokens) || tokens <= 0) throw new Error('Invalid OCR allowance estimate.');
+            if (!Number.isSafeInteger(tokens) || tokens <= 0) throw new Error(service === 'research' ? 'Invalid research allowance estimate.' : 'Invalid OCR allowance estimate.');
             const state = subscriptionState(store, user.id);
             const monthly = Math.min(tokens, state.remainingTokens);
             const prepaid = Math.min(tokens - monthly, prepaidTokens(store, user.id));
             const legacy = tokens - monthly - prepaid;
             const cost = priceMicros('standard', legacy);
-            if (balance(store, user.id) < cost) { const error = new Error('Not enough allowance for the photo estimate. Add a top-up to continue.'); error.status = 402; throw error; }
-            const reservation = { id: `ocr:${randomBytes(16).toString('hex')}`, userId: user.id, tokens, monthly, prepaid, legacy, periodId: state.periodId, status: 'pending', createdAt: new Date().toISOString() };
-            store.ocrReservations.push(reservation);
+            if (balance(store, user.id) < cost) { const error = new Error(service === 'research' ? 'Not enough allowance for sentence research. Add a top-up to continue.' : 'Not enough allowance for the photo estimate. Add a top-up to continue.'); error.status = 402; throw error; }
+            const reservation = { id: `${service}:${randomBytes(16).toString('hex')}`, userId: user.id, tokens, monthly, prepaid, legacy, periodId: state.periodId, status: 'pending', createdAt: new Date().toISOString() };
+            store[reservationKey].push(reservation);
             entry(reservation, -monthly, 'reservation', 'monthly');
             entry({ ...reservation, periodId: 'prepaid' }, -prepaid, 'reservation', 'prepaid');
             creditEntry(reservation, -cost, 'reservation', 'credit');

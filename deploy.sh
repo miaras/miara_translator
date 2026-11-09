@@ -8,7 +8,7 @@ if [ -f /var/lib/translator/store.json ]; then
 fi
 test -f .env
 install -d /srv/translator
-cp -a dist server.js openai-translation.js pricing.js source-tokens.js polar.js subscription-plans.js subscriptions.js allowance-billing.js photo-pricing.js photo-ocr.js social-auth.js referral.js human-review.js human-review-pricing.js human-review-notifications.js interface-geolocation.js package.json package-lock.json /srv/translator/
+cp -a dist server.js translation-progress.js translation-jobs.js terminology.js sentence-research-api.js sentence-research.js sentence-research-input.js openai-translation.js pricing.js source-tokens.js polar.js subscription-plans.js subscriptions.js allowance-billing.js photo-pricing.js photo-ocr.js social-auth.js referral.js human-review.js human-review-pricing.js human-review-notifications.js interface-geolocation.js package.json package-lock.json /srv/translator/
 npm ci --omit=dev --prefix /srv/translator
 install -m 600 .env /etc/translator.env
 cat > /etc/systemd/system/translator.service <<'EOF'

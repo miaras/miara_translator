@@ -9,7 +9,7 @@ function setup(request) {
     const timers = new Map();
     let timer = 0;
     const context = vm.createContext({
-        currentUser: { id: 'user' }, currentSavedId: null,
+        currentUser: { id: 'user' }, currentSavedId: null, currentProgress: null, currentJob: null, currentCustomTerms: {}, currentSourceLang: '',
         currentData: [{ source: 'Hello.', target: 'Bonjour.' }],
         currentSourceText: 'Hello.', currentTargetLang: 'French', currentInstructions: '', currentDictionary: {}, currentSummary: '',
         saveStatus: {}, saveBtn: {}, request, saveDraftValue() {}, sessionStorage: { setItem() {} }, history: { replaceState() {} }, window: {},

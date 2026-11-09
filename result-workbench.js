@@ -1,10 +1,60 @@
 import { t, localizedLanguageName } from './interface-i18n.js';
 import { downloadDocx, printPdf } from './document-export.js';
+import { initSentenceResearch } from './result-research.js';
 
-export function initResultWorkbench({ getState, replaceTargets }) {
+export function initResultWorkbench({ getState, replaceTargets, setTerm, removeTerm, setBookmark, requestResearch }) {
     const root = document.getElementById('results-page');
     if (!root) return () => {};
     const el = id => document.getElementById(id);
+    const research = initSentenceResearch({ getState, requestResearch });
+    const toolbarToggle = el('result-toolbar-toggle');
+    toolbarToggle.addEventListener('click', () => {
+        const collapsed = !el('result-toolbar-content').hidden;
+        preserveReadingPosition(() => {
+            el('result-toolbar-content').hidden = collapsed;
+            toolbarToggle.setAttribute('aria-expanded', String(!collapsed));
+            toolbarToggle.textContent = collapsed ? 'Show toolbar' : 'Hide toolbar';
+        });
+    });
+    const bookmarkLabel = document.createElement('label');
+    bookmarkLabel.textContent = 'Bookmarks ';
+    const bookmarkList = document.createElement('select');
+    bookmarkList.setAttribute('aria-label', 'Go to bookmark');
+    bookmarkLabel.append(bookmarkList);
+    root.querySelector('.result-toolbar').append(bookmarkLabel);
+    bookmarkList.addEventListener('change', () => {
+        if (bookmarkList.value === '') return;
+        const row = root.querySelectorAll('.alignment-row')[Number(bookmarkList.value)];
+        if (row) {
+            const top = root.querySelector('.result-toolbar-group').getBoundingClientRect().bottom;
+            window.scrollBy({ top: row.getBoundingClientRect().top - Math.max(0, top) - 8, behavior: 'instant' });
+            row.querySelector('.bookmark-btn')?.focus({ preventScroll: true });
+        }
+        bookmarkList.value = '';
+    });
+    function syncBookmarks() {
+        const rows = getState().rows;
+        const count = rows.filter(row => row.bookmarked).length;
+        bookmarkList.replaceChildren(new Option(`Bookmarks (${count})`, ''));
+        bookmarkList.disabled = !count;
+        root.querySelectorAll('.alignment-row').forEach((row, index) => {
+            const saved = !!rows[index]?.bookmarked;
+            row.classList.toggle('is-bookmarked', saved);
+            let button = row.querySelector('.bookmark-btn');
+            if (!button) {
+                button = document.createElement('button'); button.type = 'button'; button.className = 'bookmark-btn';
+                button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>';
+                button.addEventListener('click', () => { setBookmark(index, !getState().rows[index].bookmarked); syncBookmarks(); });
+                row.querySelector('.row-actions')?.append(button);
+            }
+            button.setAttribute('aria-pressed', String(saved));
+            button.setAttribute('aria-label', `${saved ? 'Remove bookmark from' : 'Bookmark'} sentence ${index + 1}`);
+            button.title = button.getAttribute('aria-label');
+            if (saved) bookmarkList.add(new Option(`Sentence ${index + 1}: ${rows[index].target.slice(0, 70)}`, String(index)));
+            research.addButton(row, index);
+        });
+    }
+
     const find = el('result-find'), replacement = el('result-replacement');
     let matches = [], selected = -1, undo = null;
     const messages = new Map();
@@ -20,7 +70,57 @@ export function initResultWorkbench({ getState, replaceTargets }) {
         try { localStorage.setItem('SHIROKO_REVIEW_FONT_SIZE', String(fontSize)); } catch {}
     }
     resize();
-    el('review-font-size').addEventListener('change', event => { fontSize = Number(event.target.value); resize(); });
+    function readingAnchor() {
+        const top = Math.max(0, root.querySelector('.result-toolbar-group')?.getBoundingClientRect().bottom || 0);
+        const rows = [...root.querySelectorAll('.alignment-row')];
+        for (const [rowIndex, row] of rows.entries()) {
+            const rect = row.getBoundingClientRect();
+            if (rect.bottom <= top || rect.top >= window.innerHeight) continue;
+            const items = [...row.querySelectorAll('.source-item, .original-translation-item, .target-item')];
+            items.sort((a, b) => Number(a.matches('.target-item')) - Number(b.matches('.target-item')));
+            for (const item of items) {
+                const box = item.getBoundingClientRect(), y = Math.max(top + 2, box.top + 2);
+                if (y >= Math.min(box.bottom, window.innerHeight)) continue;
+                const x = box.left + Math.min(12, box.width / 2);
+                let range;
+                if (document.caretPositionFromPoint) {
+                    const caret = document.caretPositionFromPoint(x, y);
+                    if (caret) { range = document.createRange(); range.setStart(caret.offsetNode, caret.offset); range.collapse(true); }
+                } else range = document.caretRangeFromPoint?.(x, y);
+                if (!range || !item.contains(range.startContainer) || range.startContainer.nodeType !== Node.TEXT_NODE) continue;
+                const length = range.startContainer.length;
+                if (!length) continue;
+                const offset = Math.min(range.startOffset, length - 1);
+                range.setStart(range.startContainer, offset); range.setEnd(range.startContainer, offset + 1);
+                const selector = item.matches('.source-item') ? '.source-item' : item.matches('.original-translation-item') ? '.original-translation-item' : '.target-item';
+                const prefix = document.createRange(); prefix.selectNodeContents(item); prefix.setEnd(range.startContainer, offset);
+                const textOffset = prefix.toString().length;
+                return { top: range.getBoundingClientRect().top, position: () => {
+                    const current = root.querySelectorAll('.alignment-row')[rowIndex]?.querySelector(selector);
+                    if (!current) return rect.top;
+                    const walker = document.createTreeWalker(current, NodeFilter.SHOW_TEXT);
+                    let remaining = textOffset, node;
+                    while ((node = walker.nextNode())) {
+                        if (remaining < node.length) {
+                            const restored = document.createRange(); restored.setStart(node, remaining); restored.setEnd(node, remaining + 1);
+                            return restored.getBoundingClientRect().top;
+                        }
+                        remaining -= node.length;
+                    }
+                    return current.getBoundingClientRect().top;
+                } };
+            }
+            return { position: () => root.querySelectorAll('.alignment-row')[rowIndex]?.getBoundingClientRect().top ?? rect.top, top: rect.top };
+        }
+        return null;
+    }
+    function preserveReadingPosition(action) {
+        const anchor = readingAnchor(); action();
+        if (anchor) window.scrollBy({ top: anchor.position() - anchor.top, behavior: 'instant' });
+    }
+    el('review-font-size').addEventListener('change', event => {
+        preserveReadingPosition(() => { fontSize = Number(event.target.value); resize(); });
+    });
     const sourceLanguage = text => /[\uac00-\ud7a3\u1100-\u11ff]/u.test(text) ? 'Korean' : /[A-Za-z]/.test(text) ? 'English' : 'Auto-detected';
     const langCode = name => ({ Korean: 'ko', English: 'en', Japanese: 'ja', Chinese: 'zh', French: 'fr', German: 'de', Spanish: 'es', Arabic: 'ar' })[name] || '';
     function scan() {
@@ -46,7 +146,7 @@ export function initResultWorkbench({ getState, replaceTargets }) {
     function refreshMatches(scroll = false) {
         scan(); selected = matches.length ? Math.min(Math.max(selected, 0), matches.length - 1) : -1; paint(scroll);
     }
-    find.addEventListener('input', () => { selected = 0; refreshMatches(true); });
+    find.addEventListener('input', () => { selected = 0; refreshMatches(); });
     el('result-match-case').addEventListener('change', () => { selected = 0; refreshMatches(); });
     function step(delta) { if (matches.length) { selected = (selected + delta + matches.length) % matches.length; paint(true); } }
     el('result-find-next').addEventListener('click', () => step(1));
@@ -58,7 +158,7 @@ export function initResultWorkbench({ getState, replaceTargets }) {
         if (!chosen.length) return;
         const before = getState().rows.map(row => row.target), after = [...before];
         for (const match of [...chosen].reverse()) after[match.row] = after[match.row].slice(0, match.start) + replacement.value + after[match.row].slice(match.end);
-        replaceTargets(after);
+        preserveReadingPosition(() => replaceTargets(after));
         undo = { before, after }; el('result-replace-undo').disabled = false;
         toolMessage('result-replace-status', chosen.length === 1 ? 'Replaced {count} occurrence.' : 'Replaced {count} occurrences.', { count: chosen.length });
         refreshMatches();
@@ -68,7 +168,7 @@ export function initResultWorkbench({ getState, replaceTargets }) {
     el('result-replace-undo').addEventListener('click', () => {
         if (!undo) return;
         const before = undo.before; undo = null;
-        replaceTargets(before); el('result-replace-undo').disabled = true;
+        preserveReadingPosition(() => replaceTargets(before)); el('result-replace-undo').disabled = true;
         toolMessage('result-replace-status', 'Replacement undone.'); refreshMatches();
     });
     const findPanel = el('result-find-panel'), findToggle = el('result-find-toggle');
@@ -87,13 +187,26 @@ export function initResultWorkbench({ getState, replaceTargets }) {
     });
     el('result-terms-close').addEventListener('click', closeTerms);
     termsPanel.addEventListener('keydown', event => { if (event.key === 'Escape') closeTerms(); });
+    el('result-term-form').addEventListener('submit', event => {
+        event.preventDefault();
+        const source = el('result-term-source').value.trim(), target = el('result-term-target').value.trim();
+        if (!source || !target) return;
+        try { setTerm(source, target); el('result-term-form').reset(); el('result-term-status').textContent = t('Term saved. Used for upcoming chunks and sentence regeneration.'); renderTerms(); }
+        catch (error) { el('result-term-status').textContent = error.message; }
+    });
     function renderTerms() {
         const entries = Object.entries(getState().dictionary || {}), query = el('result-terms-filter').value.toLocaleLowerCase();
         el('result-term-count').textContent = String(entries.length);
         const list = el('result-terms-list'); list.replaceChildren();
         for (const [source, target] of entries.filter(([a,b]) => `${a} ${b}`.toLocaleLowerCase().includes(query))) {
             const item = document.createElement('div'), label = document.createElement('dt'), value = document.createElement('dd');
-            label.textContent = source; value.textContent = String(target); item.append(label, value); list.append(item);
+            label.textContent = source; value.textContent = String(target); item.append(label, value);
+            if (Object.hasOwn(getState().customTerms || {}, source)) { const badge = document.createElement('small'); badge.textContent = t('Your term'); item.append(badge); }
+            const actions = document.createElement('div'); actions.className = 'term-actions';
+            for (const [text, action] of [['Edit', () => { el('result-term-source').value = source; el('result-term-target').value = target; el('result-term-target').focus(); }], ['Remove', () => { removeTerm(source); renderTerms(); }]]) {
+                const button = document.createElement('button'); button.type = 'button'; button.textContent = t(text); button.addEventListener('click', action); actions.append(button);
+            }
+            item.append(actions); list.append(item);
         }
         el('result-terms-empty').hidden = !!list.children.length;
         el('result-terms-empty').textContent = t(entries.length ? 'No terms match your search.' : 'No terms extracted yet. Proper nouns and specialist terms appear here as the translation progresses.');
@@ -110,6 +223,7 @@ export function initResultWorkbench({ getState, replaceTargets }) {
         event.target.value = '';
     });
     function sync({ contentOnly = false } = {}) {
+        syncBookmarks();
         if (contentOnly) {
             if (undo) { undo = null; el('result-replace-undo').disabled = true; }
             if (find.value) refreshMatches();

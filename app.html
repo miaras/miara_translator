@@ -109,7 +109,9 @@
                     <p class="settings-note">Fixed source-token pricing. Alignment, context, output, and reasoning are included.</p>
                     <label for="custom-instructions">Style instructions <span>(optional)</span></label>
                     <textarea dir="auto" id="custom-instructions" placeholder="E.g. use a formal tone, preserve technical terms..."></textarea>
+                    <details class="custom-terms-settings"><summary>Your terminology <span>(optional)</span></summary><p class="settings-note">Terms are extracted automatically. Add your preferred translations here to give them priority.</p><label for="custom-terms">One term per line</label><textarea id="custom-terms" dir="auto" data-no-localize placeholder="Shiroko = 시로코&#10;translation memory = 번역 메모리" aria-describedby="custom-terms-note"></textarea><p id="custom-terms-note" class="settings-note">Use source = preferred translation. Up to 500 terms.</p></details>
                     <div class="settings-spacer"></div>
+                    <p class="upload-hint">Matching unfinished translations resume automatically with the same language and instructions.</p>
                     <button id="translate-btn" class="button button-dark" type="button">Translate &amp; align <i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
                     <p class="settings-note">You can review and edit every translated sentence.</p>
                 </aside>

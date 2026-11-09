@@ -1,3 +1,6 @@
+import { createTranslationJobs } from './translation-jobs.js';
+import { createSentenceResearchApi } from './sentence-research-api.js';
+import { validProgress, resumableProgress, sameSource, sameTerms } from './translation-progress.js';
 import { createAllowanceBilling } from './allowance-billing.js';
 import { photoOcrApi } from './photo-ocr.js';
 import { countryForRequest } from './interface-geolocation.js';
@@ -24,7 +27,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 try { process.loadEnvFile(path.join(root, '.env')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const dataFile = process.env.SHIROKO_DATA_FILE || path.join(root, 'data', 'store.json');
 const port = Number(process.env.PORT || 3000);
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.vtt': 'text/vtt; charset=utf-8' };
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.vtt': 'text/vtt; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
 let store = { users: [], sessions: [], translations: [] };
 let writing = Promise.resolve();
 try { store = JSON.parse(await readFile(dataFile, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -42,7 +45,14 @@ function billingTransaction(work) {
     return next;
 }
 
+const translationJobs = createTranslationJobs({ store, persist, translate: runTranslation, documentInput });
+await translationJobs.recover();
+
 const ocrBilling = createAllowanceBilling({ store, persist, transaction: billingTransaction });
+const researchApi = createSentenceResearchApi({ store, persist, body, userFor, json,
+    ...createAllowanceBilling({ store, persist, transaction: billingTransaction, service: 'research' }),
+    account: user => ({ balanceMicros: balance(store, user.id), subscription: subscriptionState(store, user.id) })
+});
 
 function persist() {
     convertDollarCredits(store);
@@ -118,11 +128,13 @@ async function billingWebhook(req, res) {
 function documentInput(value) {
     if (!value || typeof value !== 'object' || typeof value.title !== 'string' || typeof value.sourceText !== 'string' || typeof value.targetLang !== 'string' || typeof value.instructions !== 'string' || !Array.isArray(value.rows)) return null;
     if (!value.title.trim() || value.title.length > 160 || value.instructions.length > 10_000) return null;
-    if (!value.rows.every(row => row && typeof row.source === 'string' && typeof row.target === 'string' && row.source.length <= 20_000 && row.target.length <= 20_000 && (row.originalTranslation === undefined || typeof row.originalTranslation === 'string') && (row.newParagraph === undefined || typeof row.newParagraph === 'boolean'))) return null;
+    if (!value.rows.every(row => row && typeof row.source === 'string' && typeof row.target === 'string' && row.source.length <= 20_000 && row.target.length <= 20_000 && (row.originalTranslation === undefined || typeof row.originalTranslation === 'string') && (row.newParagraph === undefined || typeof row.newParagraph === 'boolean') && (row.bookmarked === undefined || typeof row.bookmarked === 'boolean'))) return null;
+    if (value.progress !== undefined && !validProgress(value.progress, value.sourceText)) return null;
     if (value.summary !== undefined && typeof value.summary !== 'string') return null;
+    if (value.customTerms !== undefined && (!value.customTerms || typeof value.customTerms !== 'object' || Array.isArray(value.customTerms) || Object.entries(value.customTerms).length > 500 || Object.entries(value.customTerms).some(([source,target]) => !source.trim() || source.length > 200 || typeof target !== 'string' || !target.trim() || target.length > 200))) return null;
     if (value.dictionary !== undefined && (!value.dictionary || typeof value.dictionary !== 'object' || Array.isArray(value.dictionary) || Object.values(value.dictionary).some(term => typeof term !== 'string'))) return null;
     if (value.sourceLang !== undefined && (typeof value.sourceLang !== 'string' || value.sourceLang.length > 80)) return null;
-    return { ...(value.sourceLang ? { sourceLang: value.sourceLang } : {}), dictionary: value.dictionary || {}, summary: value.summary || '', title: value.title.trim(), sourceText: value.sourceText, targetLang: value.targetLang, instructions: value.instructions, rows: value.rows.map(({ source, target, newParagraph, originalTranslation }) => ({ source, target, newParagraph: !!newParagraph, ...(originalTranslation !== undefined ? { originalTranslation } : {}) })) };
+    return { ...(value.progress ? { progress: value.progress } : {}), ...(value.sourceLang ? { sourceLang: value.sourceLang } : {}), dictionary: value.dictionary || {}, customTerms: value.customTerms || {}, summary: value.summary || '', title: value.title.trim(), sourceText: value.sourceText, targetLang: value.targetLang, instructions: value.instructions, rows: value.rows.map(({ source, target, newParagraph, originalTranslation, bookmarked }) => ({ source, target, newParagraph: !!newParagraph, ...(bookmarked ? { bookmarked: true } : {}), ...(originalTranslation !== undefined ? { originalTranslation } : {}) })) };
 }
 function translationInput(value) {
     if (!value || typeof value !== 'object' || !['translate', 'regenerate', 'improve'].includes(value.mode)) return null;
@@ -135,6 +147,67 @@ function translationInput(value) {
     if (value.dictionary !== undefined && (!value.dictionary || typeof value.dictionary !== 'object' || Array.isArray(value.dictionary) || Object.entries(value.dictionary).length > 500 || Object.entries(value.dictionary).some(([key, term]) => key.length > 200 || typeof term !== 'string' || term.length > 200))) return null;
     return value;
 }
+async function runTranslation(user, input) {
+    if (!process.env.OPENAI_API_KEY) { const error = new Error('Translation is not configured.'); error.status = 503; throw error; }
+    const sourceTokens = countSourceTokens(input.text);
+    const fixedCost = priceMicros(input.speed || 'standard', sourceTokens);
+    const requestId = randomBytes(16).toString('hex');
+    let reserved = 0;
+    let reservedTokens = 0;
+    let reservedPeriodId = null;
+    let reservedPrepaidTokens = 0;
+    let settled = false;
+    const billing = {
+        reserve: () => billingTransaction(async () => {
+            const allowance = subscriptionState(store, user.id);
+            const needed = allowanceCost(input.speed || 'standard', sourceTokens);
+            const fromSubscription = Math.min(needed, allowance.remainingTokens);
+            const fromPrepaid = Math.min(needed - fromSubscription, prepaidTokens(store, user.id));
+            const amount = priceMicros('standard', needed - fromSubscription - fromPrepaid);
+            if (balance(store, user.id) < amount) {
+                const error = new Error('Choose a plan or add credit to cover this request. Your text is saved in this browser.');
+                error.status = 402;
+                throw error;
+            }
+            if (fromSubscription) {
+                store.subscriptionUsage.push({ id: requestId, userId: user.id, periodId: allowance.periodId, tokens: -fromSubscription, kind: 'reservation', createdAt: new Date().toISOString() });
+                reservedTokens = fromSubscription;
+                reservedPeriodId = allowance.periodId;
+            }
+            if (fromPrepaid) {
+                store.subscriptionUsage.push({ id: `${requestId}:prepaid`, userId: user.id, periodId: 'prepaid', tokens: -fromPrepaid, kind: 'reservation', createdAt: new Date().toISOString() });
+                reservedPrepaidTokens = fromPrepaid;
+            }
+            store.billingLedger.push({ id: requestId, userId: user.id, amountMicros: -amount, kind: 'reservation', createdAt: new Date().toISOString() });
+            reserved = amount;
+            await persist();
+        }),
+        settle: usage => billingTransaction(async () => {
+            if (!Number.isSafeInteger(usage?.input_tokens) || !Number.isSafeInteger(usage?.output_tokens) || usage.input_tokens < 0 || usage.output_tokens < 0) throw new Error('Provider usage is missing.');
+            const cost = reserved;
+            store.billingLedger.push({ id: `${requestId}:settled`, userId: user.id, amountMicros: reserved - cost, kind: 'usage', sourceTokens, allowanceTokens: reservedTokens, prepaidTokens: reservedPrepaidTokens, nominalCostMicros: fixedCost, costMicros: cost, pricingVersion: 'subscription-v1', inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, speed: input.speed || 'standard', createdAt: new Date().toISOString() });
+            settled = true;
+            await persist();
+        })
+    };
+    try {
+        const result = await translateWithOpenAI(input, fetch, process.env.OPENAI_API_KEY, billing);
+        return result;
+    }
+    catch (error) {
+        if ((reserved || reservedTokens || reservedPrepaidTokens) && !settled) await billingTransaction(async () => {
+            if (reservedPrepaidTokens) store.subscriptionUsage.push({ id: `${requestId}:prepaid-released`, userId: user.id, periodId: 'prepaid', tokens: reservedPrepaidTokens, kind: 'release', createdAt: new Date().toISOString() });
+            if (reservedTokens) store.subscriptionUsage.push({ id: `${requestId}:released`, userId: user.id, periodId: reservedPeriodId, tokens: reservedTokens, kind: 'release', createdAt: new Date().toISOString() });
+            store.billingLedger.push({ id: `${requestId}:released`, userId: user.id, amountMicros: reserved, kind: 'release', createdAt: new Date().toISOString() });
+            await persist();
+        });
+        if (error.status === 402) throw error;
+        console.error('Translation failed:', error);
+        const failure = new Error(error.message.startsWith('OpenAI is rate limited') ? error.message : 'Translation failed. Please try again.');
+        failure.status = 502; throw failure;
+    }
+}
+
 async function api(req, res, url) {
     if (!['GET', 'POST', 'PUT'].includes(req.method)) return json(res, 405, { error: 'Method not allowed.' });
     if (await socialAuth(req, res, url, { store, persist, userFor, sessionCookie, json, onSignup: (user, referralCode) => { ensureReferralCode(store, user); grantSignupReferral(store, user, referralCode); } })) return;
@@ -145,6 +218,7 @@ async function api(req, res, url) {
         if (origin && new URL(origin).host !== host) return json(res, 403, { error: 'Request origin rejected.' });
         if (!req.headers['content-type']?.startsWith('application/json')) return json(res, 415, { error: 'Expected JSON.' });
     }
+    if (await researchApi(req, res, url)) return;
     if (await photoOcrApi(req, res, url, { store, persist, userFor, body, json, ...ocrBilling, account: user => ({ balanceMicros: balance(store, user.id), subscription: subscriptionState(store, user.id) }) })) return;
     if (await humanReviewApi(req, res, url, { store, persist, userFor, body, json, reviewAdminIds, notify: notifyReviews })) return;
     if (url.pathname === '/api/translate' && req.method === 'POST') {
@@ -152,63 +226,10 @@ async function api(req, res, url) {
         if (!input) return json(res, 400, { error: 'Translation request is invalid.' });
         const user = userFor(req);
         if (!user) return json(res, 401, { error: 'Sign in to translate.' });
-        if (!process.env.OPENAI_API_KEY) return json(res, 503, { error: 'OPENAI_API_KEY is not configured on the server.' });
-        const sourceTokens = countSourceTokens(input.text);
-        const fixedCost = priceMicros(input.speed || 'standard', sourceTokens);
-        const requestId = randomBytes(16).toString('hex');
-        let reserved = 0;
-        let reservedTokens = 0;
-        let reservedPeriodId = null;
-        let reservedPrepaidTokens = 0;
-        let settled = false;
-        const billing = {
-            reserve: () => billingTransaction(async () => {
-                const allowance = subscriptionState(store, user.id);
-                const needed = allowanceCost(input.speed || 'standard', sourceTokens);
-                const fromSubscription = Math.min(needed, allowance.remainingTokens);
-                const fromPrepaid = Math.min(needed - fromSubscription, prepaidTokens(store, user.id));
-                const amount = priceMicros('standard', needed - fromSubscription - fromPrepaid);
-                if (balance(store, user.id) < amount) {
-                    const error = new Error('Choose a plan or add credit to cover this request. Your text is saved in this browser.');
-                    error.status = 402;
-                    throw error;
-                }
-                if (fromSubscription) {
-                    store.subscriptionUsage.push({ id: requestId, userId: user.id, periodId: allowance.periodId, tokens: -fromSubscription, kind: 'reservation', createdAt: new Date().toISOString() });
-                    reservedTokens = fromSubscription;
-                    reservedPeriodId = allowance.periodId;
-                }
-                if (fromPrepaid) {
-                    store.subscriptionUsage.push({ id: `${requestId}:prepaid`, userId: user.id, periodId: 'prepaid', tokens: -fromPrepaid, kind: 'reservation', createdAt: new Date().toISOString() });
-                    reservedPrepaidTokens = fromPrepaid;
-                }
-                store.billingLedger.push({ id: requestId, userId: user.id, amountMicros: -amount, kind: 'reservation', createdAt: new Date().toISOString() });
-                reserved = amount;
-                await persist();
-            }),
-            settle: usage => billingTransaction(async () => {
-                if (!Number.isSafeInteger(usage?.input_tokens) || !Number.isSafeInteger(usage?.output_tokens) || usage.input_tokens < 0 || usage.output_tokens < 0) throw new Error('Provider usage is missing.');
-                const cost = reserved;
-                store.billingLedger.push({ id: `${requestId}:settled`, userId: user.id, amountMicros: reserved - cost, kind: 'usage', sourceTokens, allowanceTokens: reservedTokens, prepaidTokens: reservedPrepaidTokens, nominalCostMicros: fixedCost, costMicros: cost, pricingVersion: 'subscription-v1', inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, speed: input.speed || 'standard', createdAt: new Date().toISOString() });
-                settled = true;
-                await persist();
-            })
-        };
         try {
-            const result = await translateWithOpenAI(input, fetch, process.env.OPENAI_API_KEY, billing);
+            const result = await runTranslation(user, input);
             return json(res, 200, { ...result, balanceMicros: balance(store, user.id), subscription: subscriptionState(store, user.id) });
-        }
-        catch (error) {
-            if ((reserved || reservedTokens || reservedPrepaidTokens) && !settled) await billingTransaction(async () => {
-                if (reservedPrepaidTokens) store.subscriptionUsage.push({ id: `${requestId}:prepaid-released`, userId: user.id, periodId: 'prepaid', tokens: reservedPrepaidTokens, kind: 'release', createdAt: new Date().toISOString() });
-                if (reservedTokens) store.subscriptionUsage.push({ id: `${requestId}:released`, userId: user.id, periodId: reservedPeriodId, tokens: reservedTokens, kind: 'release', createdAt: new Date().toISOString() });
-                store.billingLedger.push({ id: `${requestId}:released`, userId: user.id, amountMicros: reserved, kind: 'release', createdAt: new Date().toISOString() });
-                await persist();
-            });
-            if (error.status === 402) return json(res, 402, { error: error.message });
-            console.error('Translation failed:', error);
-            return json(res, 502, { error: error.message.startsWith('OpenAI is rate limited') ? error.message : 'Translation failed. Please try again.' });
-        }
+        } catch (error) { return json(res, error.status || 502, { error: error.message }); }
     }
     if (url.pathname === '/api/me' && req.method === 'GET') {
         const user = userFor(req);
@@ -314,8 +335,53 @@ async function api(req, res, url) {
             return json(res, 200, { url: checkout.url });
         } catch { return json(res, 502, { error: 'Could not open checkout. Please try again.' }); }
     }
+    if (url.pathname === '/api/translation-jobs' && req.method === 'POST') {
+        try {
+            const translation = await translationJobs.create(user, await body(req, Infinity));
+            return json(res, 202, { translation, balanceMicros: balance(store, user.id), subscription: subscriptionState(store, user.id) });
+        } catch (error) { return json(res, error.status || 500, { error: error.status ? error.message : 'Could not start translation.' }); }
+    }
+    const jobControl = /^\/api\/translations\/([a-f0-9]{32})\/(start|stop|speed)$/.exec(url.pathname);
+    if (jobControl && req.method === 'POST') {
+        try {
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 400, { error: 'Job control data is invalid.' });
+            const translation = jobControl[2] === 'stop' ? await translationJobs.stop(user, jobControl[1])
+                : jobControl[2] === 'speed' ? await translationJobs.speed(user, jobControl[1], input.speed)
+                : await translationJobs.start(user, jobControl[1], input.speed || 'standard', input.existingTranslation);
+            return json(res, 200, { translation, balanceMicros: balance(store, user.id), subscription: subscriptionState(store, user.id) });
+        } catch (error) { return json(res, error.status || 500, { error: error.status ? error.message : 'Could not update translation.' }); }
+    }
+    const jobStatus = /^\/api\/translations\/([a-f0-9]{32})\/job$/.exec(url.pathname);
+    if (jobStatus && req.method === 'GET') {
+        try {
+            const translation = translationJobs.find(user, jobStatus[1]);
+            const from = Number(url.searchParams.get('from') || 0);
+            if (!Number.isSafeInteger(from) || from < 0 || from > translation.rows.length) return json(res, 400, { error: 'Invalid progress cursor.' });
+            const { existingTranslation, ...progress } = translation.progress || {};
+            return json(res, 200, { job: translation.job || null, progress, rows: translation.rows.slice(from), totalRows: translation.rows.length,
+                summary: translation.summary || '', dictionary: translation.dictionary || {}, customTerms: translation.customTerms || {}, sourceLang: translation.sourceLang || '', updatedAt: translation.updatedAt,
+                balanceMicros: balance(store, user.id), subscription: subscriptionState(store, user.id) });
+        } catch (error) { return json(res, error.status || 500, { error: error.status ? error.message : 'Could not read translation progress.' }); }
+    }
+    if (url.pathname === '/api/translations/resume' && req.method === 'POST') {
+        const input = await body(req, Infinity);
+        if (!input || typeof input.sourceText !== 'string' || typeof input.targetLang !== 'string' || typeof input.instructions !== 'string' || !['translate', 'improve'].includes(input.mode)
+            || (input.existingTranslation !== undefined && typeof input.existingTranslation !== 'string')
+            || (input.customTerms !== undefined && (!input.customTerms || typeof input.customTerms !== 'object' || Array.isArray(input.customTerms)))) return json(res, 400, { error: 'Resume request is invalid.' });
+        const candidates = store.translations.filter(item => item.userId === user.id && item.targetLang === input.targetLang && item.instructions === input.instructions && sameSource(item.sourceText, input.sourceText)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        for (const translation of candidates) {
+            const progress = resumableProgress(translation, input.existingTranslation);
+            if (progress && sameTerms(translation.customTerms, input.customTerms) && progress.mode === input.mode && (progress.mode !== 'improve' || sameSource(progress.existingTranslation, input.existingTranslation || ''))) {
+                translation.progress = progress;
+                await persist();
+                return json(res, 200, { translation });
+            }
+        }
+        return json(res, 200, { translation: null });
+    }
     if (url.pathname === '/api/translations' && req.method === 'GET') {
-        return json(res, 200, { translations: store.translations.filter(t => t.userId === user.id).map(({ id, title, targetLang, updatedAt, rows }) => ({ id, title, targetLang, updatedAt, rowCount: rows.length })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) });
+        return json(res, 200, { translations: store.translations.filter(t => t.userId === user.id).map(({ id, title, targetLang, updatedAt, rows, job, progress }) => ({ id, title, targetLang, updatedAt, rowCount: rows.length, ...(job ? { job, completedChunks: progress?.nextChunk, totalChunks: progress?.totalChunks } : {}) })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) });
     }
     if (url.pathname === '/api/translations' && req.method === 'POST') {
         const input = documentInput(await body(req, Infinity));
@@ -329,11 +395,17 @@ async function api(req, res, url) {
     if (match) {
         const translation = store.translations.find(t => t.id === match[1] && t.userId === user.id);
         if (!translation) return json(res, 404, { error: 'Translation not found.' });
-        if (req.method === 'GET') return json(res, 200, { translation });
+        if (req.method === 'GET') return json(res, 200, { translation, balanceMicros: balance(store, user.id), subscription: subscriptionState(store, user.id) });
         if (req.method === 'PUT') {
             const input = documentInput(await body(req, Infinity));
             if (!input) return json(res, 400, { error: 'Translation data is invalid.' });
-            Object.assign(translation, input, { updatedAt: new Date().toISOString() });
+            if (translation.job) {
+                try { translationJobs.mergeEdits(translation, input); }
+                catch (error) { return json(res, error.status || 409, { error: error.message }); }
+            } else {
+                if (!input.progress) delete translation.progress;
+                Object.assign(translation, input, { updatedAt: new Date().toISOString() });
+            }
             await persist();
             return json(res, 200, { translation });
         }
